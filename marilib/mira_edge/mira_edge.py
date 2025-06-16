@@ -5,6 +5,7 @@ from mira_edge.serial_interface import SerialInterfaceException
 
 class MiraEdge:
     def __init__(self, on_receive: Callable[[Frame], None], port: str = "/dev/ttyACM0", baudrate: int = 1_000_000):
+        self.on_receive = on_receive
         try:
             self._interface = SerialAdapter(
                 port, baudrate
@@ -15,13 +16,12 @@ class MiraEdge:
         ) as exc:
             print(f"Error: {exc}")
 
-    def on_data_received(self, data):
-        print(f"Received: {data.hex()}")
+    def on_data_received(self, data: bytes):
         try:
             frame = Frame().from_bytes(data)
+            self.on_receive(frame)
         except (ValueError, ProtocolPayloadParserException) as exc:
             print(f"Failed to decode frame: {exc}")
-            return
 
     def connect_to_gateway(self):
         self._interface.init(self.on_data_received)

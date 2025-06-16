@@ -130,42 +130,9 @@ class Header(Packet):
     destination: int = MIRA_BROADCAST_ADDRESS
     source: int = 0x0000000000000000
 
-
-class NodeState(IntEnum):
-    """States of a node."""
-
-    BOOTLOADER = 0
-    RUNNING = 1
-    STOPPED = 2
-    PROGRAMMING = 3
-
-
-@dataclass
-class PayloadNodeStatus(Packet):
-    """Dataclass that holds a node status."""
-
-    metadata: list[PacketFieldMetadata] = dataclasses.field(
-        default_factory=lambda: [
-            PacketFieldMetadata(name="node_state", disp="state", length=1),
-            PacketFieldMetadata(name="battery_level", disp="bat", length=1),
-            PacketFieldMetadata(name="lh2_pos_x", disp="x", length=2),
-            PacketFieldMetadata(name="lh2_pos_y", disp="y", length=2),
-        ]
-    )
-
-    node_state: NodeState = NodeState.BOOTLOADER
-    battery_level: int = 50
-    lh2_pos_x: int = 0
-    lh2_pos_y: int = 0
-
-class PayloadType(IntEnum):
-    """Types of DotBot payload types."""
-
-    ADVERTISEMENT = 0x04
-
-PAYLOAD_PARSERS: dict[int, Packet] = {
-    PayloadType.ADVERTISEMENT: PayloadNodeStatus,
-}
+    def __repr__(self):
+        type_ = PacketType(self.type_).name
+        return f"Header(version={self.version}, type_={type_}, network_id=0x{self.network_id:04x}, destination=0x{self.destination:016x}, source=0x{self.source:016x})"
 
 
 @dataclass
@@ -173,149 +140,18 @@ class Frame:
     """Data class that holds a payload packet."""
 
     header: Header = None
-    payload: Packet = None
-
-    @property
-    def payload_type(self) -> int:
-        for payload_type, cls_ in PAYLOAD_PARSERS.items():
-            if cls_ == self.payload.__class__:
-                return payload_type
-        raise ValueError(f"Unsupported payload class '{self.payload.__class__}'")
+    payload: bytes = b""
 
     def from_bytes(self, bytes_):
-        self.header = Header().from_bytes(bytes_[0:18])
-        payload_type = int.from_bytes(bytes_[18:19], "little")
-        if payload_type not in PAYLOAD_PARSERS:
-            raise ProtocolPayloadParserException(
-                f"Unsupported payload type '{payload_type}'"
-            )
-        self.payload = PAYLOAD_PARSERS[payload_type]().from_bytes(bytes_[19:])
+        self.header = Header().from_bytes(bytes_[0:20])
+        if len(bytes_) > 20:
+            self.payload = bytes_[20:]
         return self
 
     def to_bytes(self, byteorder="little") -> bytes:
         header_bytes = self.header.to_bytes(byteorder)
-        if isinstance(self.payload, bytes):
-            payload_bytes = self.payload
-        else:
-            payload_bytes = self.payload.to_bytes(byteorder)
-        return header_bytes + int.to_bytes(self.payload_type) + payload_bytes
+        return header_bytes + self.payload
 
     def __repr__(self):
-        header_separators = [
-            "-" * (2 * field.length + 4) for field in self.header.metadata
-        ]
-        type_separators = ["-" * 6]
-        payload_separators = [
-            "-" * (2 * field.length + 4)
-            for field in self.payload.metadata
-            if field.type_ is int
-        ]
-        payload_separators += [
-            "-" * (2 * field_metadata.length + 4)
-            for metadata in self.payload.metadata
-            if metadata.type_ is list
-            for field in getattr(self.payload, metadata.name)
-            for field_metadata in field.metadata
-        ]
-        payload_separators += [
-            "-" * (2 * len(getattr(self.payload, field.name)) + 4)
-            for field in self.payload.metadata
-            if field.type_ is bytes
-        ]
-        header_names = [
-            f" {field.disp:<{2 * field.length + 3}}" for field in self.header.metadata
-        ]
-        payload_names = [
-            f" {field.disp:<{2 * field.length + 3}}"
-            for field in self.payload.metadata
-            if field.type_ in (int, bytes) and field.length > 0
-        ]
-        payload_names += [
-            f" {field.disp:<{2 * len(getattr(self.payload, field.name)) + 3}}"
-            for field in self.payload.metadata
-            if field.type_ is bytes and field.length == 0
-        ]
-        payload_names += [
-            f" {field_metadata.disp:<{2 * field_metadata.length + 3}}"
-            for metadata in self.payload.metadata
-            if metadata.type_ is list
-            for field in getattr(self.payload, metadata.name)
-            for field_metadata in field.metadata
-        ]
-        header_values = [
-            f" 0x{hexlify(int(getattr(self.header, field.name)).to_bytes(self.header.metadata[idx].length, 'big', signed=self.header.metadata[idx].signed)).decode():<{2 * self.header.metadata[idx].length + 1}}"
-            for idx, field in enumerate(dataclasses.fields(self.header)[1:])
-        ]
-        type_value = [f" 0x{hexlify(self.payload_type.to_bytes(1, 'big')).decode():<3}"]
-        payload_values = [
-            f" 0x{hexlify(int(getattr(self.payload, field.name)).to_bytes(self.payload.metadata[idx].length, 'big', signed=self.payload.metadata[idx].signed)).decode():<{2 * self.payload.metadata[idx].length + 1}}"
-            for idx, field in enumerate(dataclasses.fields(self.payload)[1:])
-            if self.payload.metadata[idx].type_ is int
-        ]
-        payload_values += [
-            f" 0x{hexlify(int(getattr(field, field_metadata.name)).to_bytes(field_metadata.length, 'big', signed=field_metadata.signed)).decode():<{2 *field_metadata.length + 1}}"
-            for metadata in self.payload.metadata
-            if metadata.type_ is list
-            for field in getattr(self.payload, metadata.name)
-            for field_metadata in field.metadata
-        ]
-        payload_values += [
-            f" 0x{hexlify(getattr(self.payload, field.name)).decode():<{2 * self.payload.count + 1}}"
-            for idx, field in enumerate(dataclasses.fields(self.payload)[1:])
-            if self.payload.metadata[idx].type_ is bytes
-            and hasattr(self.payload, "count")
-        ]
-        payload_values += [
-            f" 0x{hexlify(getattr(self.payload, field.name)).decode():<{2 * self.payload.metadata[idx].length + 1}}"
-            for idx, field in enumerate(dataclasses.fields(self.payload)[1:])
-            if self.payload.metadata[idx].type_ is bytes
-            and not hasattr(self.payload, "count")
-        ]
-        num_bytes = (
-            sum(field.length for field in self.header.metadata)
-            + 1
-            + sum(field.length for field in self.payload.metadata)
-        )
-        num_bytes += sum(
-            field_metadata.length
-            for metadata in self.payload.metadata
-            if metadata.type_ is list
-            for field in getattr(self.payload, metadata.name)
-            for field_metadata in field.metadata
-        )
-        num_bytes += sum(
-            len(getattr(self.payload, field.name))
-            for field in self.payload.metadata
-            if field.type_ is bytes and field.length == 0
-        )
-
-        if self.payload_type not in [*PayloadType]:
-            payload_type_str = "CUSTOM_DATA"
-        else:
-            payload_type_str = PayloadType(self.payload_type).name
-        if num_bytes > 24:
-            # put values on a separate row
-            separators = header_separators + type_separators
-            names = header_names + [" type "]
-            values = header_values + type_value
-            return (
-                f" {' ' * 16}+{'+'.join(separators)}+\n"
-                f" {payload_type_str:<16}|{'|'.join(names)}|\n"
-                f" {f'({num_bytes} Bytes)':<16}|{'|'.join(values)}|\n"
-                f" {' ' * 16}+{'+'.join(separators)}+\n"
-                f" {' ' * 16}+{'+'.join(payload_separators)}+\n"
-                f" {' ' * 16}|{'|'.join(payload_names)}|\n"
-                f" {' ' * 16}|{'|'.join(payload_values)}|\n"
-                f" {' ' * 16}+{'+'.join(payload_separators)}+\n"
-            )
-
-        # all in a row by default
-        separators = header_separators + type_separators + payload_separators
-        names = header_names + [" type "] + payload_names
-        values = header_values + type_value + payload_values
-        return (
-            f" {' ' * 16}+{'+'.join(separators)}+\n"
-            f" {payload_type_str:<16}|{'|'.join(names)}|\n"
-            f" {f'({num_bytes} Bytes)':<16}|{'|'.join(values)}|\n"
-            f" {' ' * 16}+{'+'.join(separators)}+\n"
-        )
+        header_no_metadata = dataclasses.replace(self.header, metadata=[])
+        return f"Frame(header={header_no_metadata}, payload={self.payload})"
