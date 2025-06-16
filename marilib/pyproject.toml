@@ -1,0 +1,60 @@
+[build-system]
+requires = [
+    "hatchling>=1.4.1",
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "*.py"
+]
+exclude = [
+]
+
+[tool.hatch.version]
+path = "mira_edge/__init__.py"
+
+[project]
+name = "mira_edge"
+dynamic = ["version"]
+authors = [
+    { name="Geovane Fedrecheski", email="geovane.fedrecheski@inria.fr" },
+]
+dependencies = [
+    "click          == 8.1.7",
+    "pyserial       == 3.5",
+    "rich           == 14.0.0",
+    "structlog      == 24.4.0",
+    "tqdm           == 4.66.5",
+]
+description = "MiraEdge is a Python library for interacting with the Mira network."
+readme = "README.md"
+license = { text="BSD" }
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/DotBots/mira_edge"
+"Bug Tracker" = "https://github.com/DotBots/mira_edge/issues"
+
+[project.scripts]
+mira_edge = "mira_edge.cli.main:main"
+
+[tool.ruff]
+lint.select = ["E", "F"]
+line-length = 88
+lint.ignore = ["E501", "E722"]
+
+[tool.isort]
+multi_line_output = 3  # Use Vertical Hanging Indent
+profile = "black"
+
+[tool.black]
+line-length = 79
+skip-string-normalization = true
