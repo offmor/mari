@@ -85,7 +85,12 @@ class MiraGateway:
             return node
         return None
 
-    def keep_node_alive(self, address: NodeAddress):
+    def register_received_frame(self, address: NodeAddress):
         node = next((node for node in self.nodes if node.address == address), None)
         if node:
             node.last_seen = datetime.now()
+            node.stats.received += 1
+            self.stats.received += 1
+
+    def register_sent_frame(self):
+        self.stats.sent += 1

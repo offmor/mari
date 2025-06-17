@@ -22,14 +22,10 @@ class MiraEdgeTUI:
         # Create layout
         layout = Layout()
 
-        # Add components
-        header = self.create_header_panel(mira)
-        nodes_table = self.create_nodes_table(mira)
-
         # Create a layout with both components
         layout.split(
-            Layout(header, size=8),
-            Layout(nodes_table)
+            Layout(self.create_header_panel(mira), size=8),
+            Layout(self.create_nodes_panel(mira))
         )
 
         # Update display
@@ -43,7 +39,8 @@ class MiraEdgeTUI:
             status.append("connected", style="bold green")
         else:
             status.append("disconnected", style="bold red")
-        status.append(f" via {mira.port} at {mira.baudrate} baud\n")
+        status.append(f" via {mira.port} at {mira.baudrate} baud")
+        status.append(f"  |  last received: {int((datetime.now() - mira.last_received_serial_data).total_seconds())}s ago\n")
         status.append("\n")
 
         # Gateway info
@@ -69,12 +66,13 @@ class MiraEdgeTUI:
             border_style="blue"
         )
 
-    def create_nodes_table(self, mira: MiraEdge) -> Table:
+    def create_nodes_panel(self, mira: MiraEdge) -> Panel:
+        """Create a panel containing the nodes table."""
         table = Table(
             show_header=True,
             header_style="bold cyan",
-            title="Connected Nodes",
-            border_style="blue"
+            border_style="blue",
+            padding=(0, 1)  # Add some horizontal padding
         )
 
         # Add columns
@@ -96,7 +94,11 @@ class MiraEdgeTUI:
                 str(node.stats.received)
             )
 
-        return table
+        return Panel(
+            table,
+            title="[bold]Connected Nodes",
+            border_style="blue"
+        )
 
     def close(self):
         """Clean up the live display."""

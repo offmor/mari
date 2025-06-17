@@ -16,6 +16,7 @@ class MiraEdge:
     baudrate: int = 1_000_000
     gateway: MiraGateway = field(default_factory=MiraGateway)
     serial_interface: SerialAdapter | None = None
+    last_received_serial_data: datetime = field(default_factory=lambda: datetime.now())
 
     def __post_init__(self):
         try:
@@ -37,6 +38,8 @@ class MiraEdge:
     def on_data_received(self, data: bytes):
         if len(data) < 1:
             return
+
+        self.last_received_serial_data = datetime.now()
 
         event_type = data[0]
 
@@ -63,7 +66,7 @@ class MiraEdge:
                 frame = Frame().from_bytes(frame_bytes)
                 # print(f"Event: {EdgeEvent.NODE_DATA.name} {frame.header} {frame.payload.hex()}")
                 source_address = NodeAddress.from_int(frame.header.source)
-                self.gateway.keep_node_alive(source_address)
+                self.gateway.register_received_frame(source_address)
                 self.on_event(EdgeEvent.NODE_DATA, frame)
             except (ValueError, ProtocolPayloadParserException) as exc:
                 print(f"Failed to decode frame: {exc}")
@@ -83,3 +86,4 @@ class MiraEdge:
     def send_frame(self, dst: int, payload: bytes):
         assert self.serial_interface is not None
         self.serial_interface.send_data(Frame(Header(destination=dst), payload=payload).to_bytes())
+        self.gateway.register_sent_frame()
