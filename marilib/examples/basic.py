@@ -1,15 +1,15 @@
 import time
-from mira_edge.mira_edge import MiraEdge, EdgeEvent
+from mira_edge.mira_edge import MiraEdge, EdgeEvent, MiraNode
 from mira_edge.protocol import Frame, MIRA_BROADCAST_ADDRESS
 
 
-def on_event(event: EdgeEvent, data: Frame | bytes):
+def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
     if event == EdgeEvent.NODE_JOINED:
-        print(f"Node {data} joined")
+        print(f"Node {event_data} joined")
     elif event == EdgeEvent.NODE_LEFT:
-        print(f"Node {data} left")
+        print(f"Node {event_data} left")
     elif event == EdgeEvent.NODE_DATA:
-        print(f"Got frame from {data.header.source}: {data.payload}")
+        print(f"Got frame from {event_data.header.source}: {event_data.payload}")
 
 mira = MiraEdge(on_event=on_event)
 mira.connect_to_gateway() # via UART
@@ -21,7 +21,7 @@ for i in range(30):
     time.sleep(1)
 
     for node in mira.nodes:
-        mira.send_frame(dst=node, payload=b"Hello, World!")
+        mira.send_frame(dst=node.address_int, payload=b"Hello, World!")
 
 
 mira.disconnect_from_gateway()
