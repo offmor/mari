@@ -64,6 +64,7 @@ class MiraGateway:
     network_id: NetworkId = field(default_factory=lambda: NetworkId(b'\x00' * 2))
     schedule_id: int = 0
     nodes: list[MiraNode] = field(default_factory=list)
+    stats: FrameStats = field(default_factory=FrameStats)
 
     def __repr__(self):
         return f"MiraGateway(address={self.address}, network_id={self.network_id}, schedule_id={self.schedule_id}), number of nodes: {len(self.nodes)}"

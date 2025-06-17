@@ -30,6 +30,10 @@ class MiraEdge:
         ) as exc:
             print(f"Error: {exc}")
 
+    @property
+    def serial_connected(self) -> bool:
+        return self.serial_interface is not None and self.serial_interface.serial is not None
+
     def on_data_received(self, data: bytes):
         if len(data) < 1:
             return

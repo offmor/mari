@@ -4,6 +4,7 @@ from mira_edge.mira_edge import MiraEdge
 from mira_edge.model import EdgeEvent, MiraNode
 from mira_edge.protocol import Frame, MIRA_BROADCAST_ADDRESS
 
+from mira_edge.tui import MiraEdgeTUI
 
 def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
     if event == EdgeEvent.NODE_JOINED:
@@ -25,6 +26,7 @@ def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
 def main(port: str | None):
     """Basic example of using MiraEdge to communicate with nodes."""
     mira = MiraEdge(on_event=on_event, port=port)
+    tui = MiraEdgeTUI()
 
     try:
         mira.connect_to_gateway()
@@ -33,6 +35,7 @@ def main(port: str | None):
             for node in mira.gateway.nodes:
                 mira.send_frame(dst=node.address_int, payload=b"Hello, World!")
             time.sleep(1)
+            tui.render(mira)
 
     except KeyboardInterrupt:
         print("\nInterrupted by user")
