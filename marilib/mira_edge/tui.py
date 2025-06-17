@@ -3,6 +3,9 @@ from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
 from rich.text import Text
+from rich.live import Live
+from rich.layout import Layout
+import os
 
 from mira_edge.mira_edge import MiraEdge
 
@@ -10,18 +13,27 @@ from mira_edge.mira_edge import MiraEdge
 class MiraEdgeTUI:
     def __init__(self):
         self.console = Console()
+        self.live = Live(console=self.console, auto_refresh=False, transient=True)
+        self.live.start()
+        # Store the number of lines we last printed
+        self.last_height = 0
 
     def render(self, mira: MiraEdge):
-        # Clear the screen before rendering
-        self.console.clear()
+        # Create layout
+        layout = Layout()
 
-        # Create header panel
+        # Add components
         header = self.create_header_panel(mira)
-        self.console.print(header)
-
-        # Create nodes table
         nodes_table = self.create_nodes_table(mira)
-        self.console.print(nodes_table)
+
+        # Create a layout with both components
+        layout.split(
+            Layout(header, size=8),
+            Layout(nodes_table)
+        )
+
+        # Update display
+        self.live.update(layout, refresh=True)
 
     def create_header_panel(self, mira: MiraEdge) -> Panel:
         status = Text()
@@ -85,3 +97,9 @@ class MiraEdgeTUI:
             )
 
         return table
+
+    def close(self):
+        """Clean up the live display."""
+        self.live.stop()
+        # Move cursor to a new line to ensure prompt appears correctly
+        print("")

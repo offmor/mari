@@ -10,15 +10,15 @@ def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
     if event == EdgeEvent.NODE_JOINED:
         assert isinstance(event_data, MiraNode)
         # print(f"Node {event_data} joined")
-        print("#", end="", flush=True)
+        # print("#", end="", flush=True)
     elif event == EdgeEvent.NODE_LEFT:
         assert isinstance(event_data, MiraNode)
         # print(f"Node {event_data} left")
-        print("0", end="", flush=True)
+        # print("0", end="", flush=True)
     elif event == EdgeEvent.NODE_DATA:
         assert isinstance(event_data, Frame)
         # print(f"Got frame from 0x{event_data.header.source:016x}: {event_data.payload.hex()}")
-        print(".", end="", flush=True)
+        # print(".", end="", flush=True)
 
 
 @click.command()
@@ -40,6 +40,7 @@ def main(port: str | None):
     except KeyboardInterrupt:
         print("\nInterrupted by user")
     finally:
+        tui.close()
         mira.disconnect_from_gateway()
 
 
