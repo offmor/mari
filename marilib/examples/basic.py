@@ -30,7 +30,7 @@ def main(port: str | None):
         mira.connect_to_gateway()
 
         while True:
-            for node in mira.nodes:
+            for node in mira.gateway.nodes:
                 mira.send_frame(dst=node.address_int, payload=b"Hello, World!")
             time.sleep(1)
 
