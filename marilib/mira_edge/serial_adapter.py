@@ -46,7 +46,9 @@ class SerialAdapter(GatewayAdapterBase):
         self.serial = SerialInterface(
             self.port, self.baudrate, self.on_byte_received
         )
-        print("[yellow]Connected to gateway[/]")
+        print(f"[yellow]Connected to gateway on port {self.port}[/]")
+        # send a disconnect followed by a connect to reset the gateway
+        self.send_data(b"\xfe")
         self.send_data(b"\xff")
 
     def close(self):

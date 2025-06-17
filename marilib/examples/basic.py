@@ -1,27 +1,43 @@
 import time
+import click
 from mira_edge.mira_edge import MiraEdge, EdgeEvent, MiraNode
 from mira_edge.protocol import Frame, MIRA_BROADCAST_ADDRESS
 
 
 def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
     if event == EdgeEvent.NODE_JOINED:
-        print(f"Node {event_data} joined")
+        assert isinstance(event_data, MiraNode)
+        # print(f"Node {event_data} joined")
+        print("#", end="", flush=True)
     elif event == EdgeEvent.NODE_LEFT:
-        print(f"Node {event_data} left")
+        assert isinstance(event_data, MiraNode)
+        # print(f"Node {event_data} left")
+        print("0", end="", flush=True)
     elif event == EdgeEvent.NODE_DATA:
-        print(f"Got frame from {event_data.header.source}: {event_data.payload}")
-
-mira = MiraEdge(on_event=on_event)
-mira.connect_to_gateway() # via UART
-
-for i in range(30):
-    # payload = b"aaa aaa aaa"
-    # print(f"Sending broadcast frame: {payload}")
-    # mira.send_frame(dst=MIRA_BROADCAST_ADDRESS, payload=payload)
-    time.sleep(1)
-
-    for node in mira.nodes:
-        mira.send_frame(dst=node.address_int, payload=b"Hello, World!")
+        assert isinstance(event_data, Frame)
+        # print(f"Got frame from 0x{event_data.header.source:016x}: {event_data.payload.hex()}")
+        print(".", end="", flush=True)
 
 
-mira.disconnect_from_gateway()
+@click.command()
+@click.option('--port', '-p', help='Serial port to use (e.g., /dev/ttyUSB0)')
+def main(port: str | None):
+    """Basic example of using MiraEdge to communicate with nodes."""
+    mira = MiraEdge(on_event=on_event, port=port)
+
+    try:
+        mira.connect_to_gateway()
+
+        while True:
+            for node in mira.nodes:
+                mira.send_frame(dst=node.address_int, payload=b"Hello, World!")
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        print("\nInterrupted by user")
+    finally:
+        mira.disconnect_from_gateway()
+
+
+if __name__ == '__main__':
+    main()
