@@ -18,18 +18,18 @@ class EdgeEvent(IntEnum):
 
 @dataclass
 class NodeAddress:
-    address: bytes = field(default_factory=lambda: b'\x00' * 8)
+    value: bytes = field(default_factory=lambda: b'\x00' * 8)
 
     @property
-    def address_int(self) -> int:
-        return int.from_bytes(self.address, "little")
+    def value_int(self) -> int:
+        return int.from_bytes(self.value, "little")
 
     @staticmethod
     def from_int(address_int: int) -> "NodeAddress":
         return NodeAddress(address_int.to_bytes(length=8, byteorder="little"))
 
     def __repr__(self):
-        return 'Addr: 0x' + ''.join([f'{b:02X}' for b in reversed(self.address)])
+        return '0x' + ''.join([f'{b:02X}' for b in reversed(self.value)])
 
 
 @dataclass
@@ -43,7 +43,7 @@ class MiraNode:
 
     @property
     def address_int(self) -> int:
-        return self.address.address_int
+        return self.address.value_int
 
     def __repr__(self):
         return f"MiraNode(address={self.address}, last_seen={self.last_seen})"
@@ -68,26 +68,26 @@ class MiraEdge:
         if event_type == EdgeEvent.NODE_JOINED:
             address = NodeAddress(data[1:9])
             print(f"Node joined: {address}")
-            node = self.add_node(address.address)
+            node = self.add_node(address)
             self.on_event(EdgeEvent.NODE_JOINED, node)
 
         elif event_type == EdgeEvent.NODE_LEFT:
             address = NodeAddress(data[1:9])
             print(f"Node left: {address}")
-            if node := self.remove_node(address.address):
+            if node := self.remove_node(address):
                 self.on_event(EdgeEvent.NODE_LEFT, node)
 
         elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
             address = NodeAddress(data[1:9])
             print(f"Node keep alive: {address}")
-            self.keep_node_alive(address.address)
+            self.keep_node_alive(address)
 
         elif event_type == EdgeEvent.NODE_DATA:
             try:
                 frame = Frame().from_bytes(data)
                 print(f"Received frame: {frame.header} {frame.payload}")
                 source_address = NodeAddress.from_int(frame.header.source)
-                self.keep_node_alive(source_address.address)
+                self.keep_node_alive(source_address)
                 self.on_event(EdgeEvent.NODE_DATA, frame)
             except (ValueError, ProtocolPayloadParserException) as exc:
                 print(f"Failed to decode frame: {exc}")
@@ -95,23 +95,23 @@ class MiraEdge:
         else:
             print(f"Unknown event: {event_type} -- {data}")
 
-    def add_node(self, address: bytes) -> MiraNode:
+    def add_node(self, address: NodeAddress) -> MiraNode:
         node = next((node for node in self.nodes if node.address == address), None)
         if node:
             node.last_seen = datetime.now()
         else:
-            node = MiraNode(NodeAddress(address), datetime.now())
+            node = MiraNode(address, datetime.now())
             self.nodes.append(node)
         return node
 
-    def remove_node(self, address: bytes) -> MiraNode | None:
+    def remove_node(self, address: NodeAddress) -> MiraNode | None:
         node = next((node for node in self.nodes if node.address == address), None)
         if node:
             self.nodes.remove(node)
             return node
         return None
 
-    def keep_node_alive(self, address: bytes):
+    def keep_node_alive(self, address: NodeAddress):
         node = next((node for node in self.nodes if node.address == address), None)
         if node:
             node.last_seen = datetime.now()
