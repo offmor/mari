@@ -1,6 +1,7 @@
 import time
 import click
-from mira_edge.mira_edge import MiraEdge, EdgeEvent, MiraNode
+from mira_edge.mira_edge import MiraEdge
+from mira_edge.model import EdgeEvent, MiraNode
 from mira_edge.protocol import Frame, MIRA_BROADCAST_ADDRESS
 
 
