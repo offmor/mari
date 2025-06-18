@@ -39,9 +39,11 @@ class MiraEdgeTUI:
             status.append("connected", style="bold green")
         else:
             status.append("disconnected", style="bold red")
-        status.append(f" via {mira.port} at {mira.baudrate} baud")
-        status.append(f"  |  last received: {int((datetime.now() - mira.last_received_serial_data).total_seconds())}s ago\n")
-        status.append("\n")
+        status.append(f" via {mira.port} at {mira.baudrate} baud  |  ")
+        secs = int((datetime.now() - mira.last_received_serial_data).total_seconds())
+        style = "bold green" if secs <= 1 else "bold red"
+        status.append(f"last received: {secs}s ago", style=style)
+        status.append("\n\n")
 
         # Gateway info
         status.append("Gateway: ", style="bold cyan")
@@ -77,20 +79,12 @@ class MiraEdgeTUI:
 
         # Add columns
         table.add_column("Node Address", style="cyan")
-        table.add_column("Last Seen", style="")
-        table.add_column("TX", justify="right", style="")
         table.add_column("RX", justify="right", style="")
 
         # Add rows for each node
         for node in mira.gateway.nodes:
-            # Calculate time since last seen
-            time_diff = datetime.now() - node.last_seen
-            last_seen = f"{int(time_diff.total_seconds())}s ago"
-
             table.add_row(
                 f"0x{node.address_int:016X}",
-                last_seen,
-                str(node.stats.sent),
                 str(node.stats.received)
             )
 
