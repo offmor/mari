@@ -1,14 +1,16 @@
-from enum import IntEnum
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from enum import IntEnum
 
 
 class EdgeEvent(IntEnum):
     """Types of UART packet."""
+
     NODE_JOINED = 1
     NODE_LEFT = 2
     NODE_DATA = 3
     NODE_KEEP_ALIVE = 4
+    GATEWAY_INFO = 5
 
 
 @dataclass
@@ -58,10 +60,15 @@ class MiraNode:
     def __repr__(self):
         return f"MiraNode(address={self.address}, last_seen={self.last_seen})"
 
+
 @dataclass
 class MiraGateway:
-    address: NodeAddress = field(default_factory=lambda: NodeAddress(b'\x00' * 8))
-    network_id: NetworkId = field(default_factory=lambda: NetworkId(b'\x00' * 2))
+    address: NodeAddress = field(
+        default_factory=lambda: NodeAddress(b'\x00' * 8)
+    )
+    network_id: NetworkId = field(
+        default_factory=lambda: NetworkId(b'\x00' * 2)
+    )
     schedule_id: int = 0
     nodes: list[MiraNode] = field(default_factory=list)
     stats: FrameStats = field(default_factory=FrameStats)
@@ -69,8 +76,15 @@ class MiraGateway:
     def __repr__(self):
         return f"MiraGateway(address={self.address}, network_id={self.network_id}, schedule_id={self.schedule_id}), number of nodes: {len(self.nodes)}"
 
+    def set_info(self, data: bytes):
+        self.address = NodeAddress(data[:8])
+        self.network_id = NetworkId(data[8:10])
+        self.schedule_id = int.from_bytes(data[10:12], "little")
+
     def add_node(self, address: NodeAddress) -> MiraNode:
-        node = next((node for node in self.nodes if node.address == address), None)
+        node = next(
+            (node for node in self.nodes if node.address == address), None
+        )
         if node:
             node.last_seen = datetime.now()
         else:
@@ -79,14 +93,18 @@ class MiraGateway:
         return node
 
     def remove_node(self, address: NodeAddress) -> MiraNode | None:
-        node = next((node for node in self.nodes if node.address == address), None)
+        node = next(
+            (node for node in self.nodes if node.address == address), None
+        )
         if node:
             self.nodes.remove(node)
             return node
         return None
 
     def register_received_frame(self, address: NodeAddress):
-        node = next((node for node in self.nodes if node.address == address), None)
+        node = next(
+            (node for node in self.nodes if node.address == address), None
+        )
         if node:
             node.last_seen = datetime.now()
             node.stats.received += 1

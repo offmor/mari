@@ -1,30 +1,37 @@
-from typing import Callable
-from enum import IntEnum
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from enum import IntEnum
+from typing import Callable
+
+import serial
+
 from mira_edge.model import EdgeEvent, MiraGateway, MiraNode, NodeAddress
 from mira_edge.protocol import Frame, Header, ProtocolPayloadParserException
 from mira_edge.serial_adapter import SerialAdapter
-from mira_edge.serial_interface import SerialInterfaceException, get_default_port
-import serial
+from mira_edge.serial_interface import (
+    SerialInterfaceException,
+    get_default_port,
+)
 
 
 @dataclass
 class MiraEdge:
-    on_event: Callable[[EdgeEvent, MiraNode | Frame], None] = field(default_factory=lambda: lambda *args: None)
+    on_event: Callable[[EdgeEvent, MiraNode | Frame], None] = field(
+        default_factory=lambda: lambda *args: None
+    )
     port: str | None = None
     baudrate: int = 1_000_000
     gateway: MiraGateway = field(default_factory=MiraGateway)
     serial_interface: SerialAdapter | None = None
-    last_received_serial_data: datetime = field(default_factory=lambda: datetime.now())
+    last_received_serial_data: datetime = field(
+        default_factory=lambda: datetime.now()
+    )
 
     def __post_init__(self):
         try:
             if self.port is None:
                 self.port = get_default_port()
-            self.serial_interface = SerialAdapter(
-                self.port, self.baudrate
-            )
+            self.serial_interface = SerialAdapter(self.port, self.baudrate)
         except (
             SerialInterfaceException,
             serial.SerialException,
@@ -33,7 +40,10 @@ class MiraEdge:
 
     @property
     def serial_connected(self) -> bool:
-        return self.serial_interface is not None and self.serial_interface.serial is not None
+        return (
+            self.serial_interface is not None
+            and self.serial_interface.serial is not None
+        )
 
     def on_data_received(self, data: bytes):
         if len(data) < 1:
@@ -42,6 +52,7 @@ class MiraEdge:
         self.last_received_serial_data = datetime.now()
 
         event_type = data[0]
+        event_data = data[1:] if len(data) > 1 else None
 
         if event_type == EdgeEvent.NODE_JOINED:
             address = NodeAddress(data[1:9])
@@ -71,6 +82,10 @@ class MiraEdge:
             except (ValueError, ProtocolPayloadParserException) as exc:
                 print(f"Failed to decode frame: {exc}")
 
+        elif event_type == EdgeEvent.GATEWAY_INFO:
+            if event_data:
+                self.gateway.set_info(event_data)
+
         else:
             # print(f"Unknown event: {event_type} -- {data}")
             print("?", end="", flush=True)
@@ -85,5 +100,7 @@ class MiraEdge:
 
     def send_frame(self, dst: int, payload: bytes):
         assert self.serial_interface is not None
-        self.serial_interface.send_data(Frame(Header(destination=dst), payload=payload).to_bytes())
+        self.serial_interface.send_data(
+            Frame(Header(destination=dst), payload=payload).to_bytes()
+        )
         self.gateway.register_sent_frame()
