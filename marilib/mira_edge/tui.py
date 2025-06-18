@@ -1,26 +1,41 @@
-from datetime import datetime
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich.text import Text
-from rich.live import Live
-from rich.layout import Layout
-from rich.columns import Columns
-from rich.console import Group
 import os
+from datetime import datetime
+
+from rich.columns import Columns
+from rich.console import Console, Group
+from rich.layout import Layout
+from rich.live import Live
+from rich.panel import Panel
+from rich.table import Table
+from rich.text import Text
 
 from mira_edge.mira_edge import MiraEdge
 
 
 class MiraEdgeTUI:
-    def __init__(self, max_tables=3, max_rows=2):
+    def __init__(self, max_tables=3):
         self.console = Console()
-        self.live = Live(console=self.console, auto_refresh=False, transient=True)
+        self.live = Live(
+            console=self.console, auto_refresh=False, transient=True
+        )
         self.live.start()
         self.max_tables = max_tables
-        self.max_rows = max_rows
-        # Store the number of lines we last printed
-        self.last_height = 0
+
+    def get_max_rows(self) -> int:
+        """Calculate maximum rows based on terminal height.
+
+        Takes into account:
+        - Header panel (8 lines)
+        - Panel borders (2 lines)
+        - Table header (2 lines)
+        - Footer space for "more nodes" message (1 line)
+        - Extra space manually added (2 lines)
+        """
+        terminal_height = self.console.height
+        available_height = terminal_height - 8 - 2 - 2 - 1 - 2
+        return max(
+            2, available_height
+        )  # Minimum 2 rows to always show something
 
     def render(self, mira: MiraEdge):
         # Create layout
@@ -29,7 +44,7 @@ class MiraEdgeTUI:
         # Create a layout with both components
         layout.split(
             Layout(self.create_header_panel(mira), size=8),
-            Layout(self.create_nodes_panel(mira))
+            Layout(self.create_nodes_panel(mira)),
         )
 
         # Update display
@@ -44,7 +59,9 @@ class MiraEdgeTUI:
         else:
             status.append("disconnected", style="bold red")
         status.append(f" via {mira.port} at {mira.baudrate} baud  |  ")
-        secs = int((datetime.now() - mira.last_received_serial_data).total_seconds())
+        secs = int(
+            (datetime.now() - mira.last_received_serial_data).total_seconds()
+        )
         style = "bold green" if secs <= 1 else "bold red"
         status.append(f"last received: {secs}s ago", style=style)
         status.append("\n\n")
@@ -67,9 +84,7 @@ class MiraEdgeTUI:
         status.append(f"{mira.gateway.stats.received}")
 
         return Panel(
-            status,
-            title="[bold]MiraEdge Status",
-            border_style="blue"
+            status, title="[bold]MiraEdge Status", border_style="blue"
         )
 
     def create_nodes_table(self, nodes, title="") -> Table:
@@ -79,7 +94,7 @@ class MiraEdgeTUI:
             header_style="bold cyan",
             border_style="blue",
             padding=(0, 1),
-            title=title
+            title=title,
         )
 
         # Add columns
@@ -89,8 +104,7 @@ class MiraEdgeTUI:
         # Add rows for each node
         for node in nodes:
             table.add_row(
-                f"0x{node.address_int:016X}",
-                str(node.stats.received)
+                f"0x{node.address_int:016X}", str(node.stats.received)
             )
 
         return table
@@ -99,9 +113,10 @@ class MiraEdgeTUI:
         """Create a panel containing the nodes tables."""
         nodes = mira.gateway.nodes
         total_nodes = len(nodes)
+        max_rows = self.get_max_rows()
 
         # Calculate how many nodes we can show
-        max_displayable_nodes = self.max_tables * self.max_rows
+        max_displayable_nodes = self.max_tables * max_rows
         nodes_to_display = nodes[:max_displayable_nodes]
         remaining_nodes = max(0, total_nodes - max_displayable_nodes)
 
@@ -113,11 +128,16 @@ class MiraEdgeTUI:
             current_table_nodes.append(node)
 
             # Create a new table when we hit max rows or last node
-            if len(current_table_nodes) == self.max_rows or i == len(nodes_to_display) - 1:
+            if (
+                len(current_table_nodes) == max_rows
+                or i == len(nodes_to_display) - 1
+            ):
                 start_idx = i - len(current_table_nodes) + 1
                 end_idx = i + 1
                 title = f"Nodes {start_idx + 1}-{end_idx}"
-                tables.append(self.create_nodes_table(current_table_nodes, title))
+                tables.append(
+                    self.create_nodes_table(current_table_nodes, title)
+                )
                 current_table_nodes = []
 
                 # Stop if we've hit max tables
@@ -134,15 +154,16 @@ class MiraEdgeTUI:
         if remaining_nodes > 0:
             panel_content = Group(
                 content,
-                Text(f"\n(...and {remaining_nodes} more nodes)", style="bold yellow")
+                Text(
+                    f"\n(...and {remaining_nodes} more nodes)",
+                    style="bold yellow",
+                ),
             )
         else:
             panel_content = content
 
         return Panel(
-            panel_content,
-            title="[bold]Connected Nodes",
-            border_style="blue"
+            panel_content, title="[bold]Connected Nodes", border_style="blue"
         )
 
     def close(self):
