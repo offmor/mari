@@ -68,11 +68,11 @@ class MiraEdgeTUI:
 
         # Gateway info
         status.append("Gateway: ", style="bold cyan")
-        status.append(f"{mira.gateway.address}  |  ")
+        status.append(f"0x{mira.gateway.info.address:016X}  |  ")
         status.append("Network ID: ", style="bold cyan")
-        status.append(f"{mira.gateway.network_id}  |  ")
+        status.append(f"{mira.gateway.info.network_id}  |  ")
         status.append("Schedule ID: ", style="bold cyan")
-        status.append(f"{mira.gateway.schedule_id}\n")
+        status.append(f"{mira.gateway.info.schedule_id}\n")
 
         # Network stats
         status.append("\nStats:    ", style="bold yellow")
@@ -103,9 +103,7 @@ class MiraEdgeTUI:
 
         # Add rows for each node
         for node in nodes:
-            table.add_row(
-                f"0x{node.address_int:016X}", str(node.stats.received)
-            )
+            table.add_row(f"0x{node.address:016X}", str(node.stats.received))
 
         return table
 

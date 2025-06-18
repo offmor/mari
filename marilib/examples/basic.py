@@ -1,10 +1,12 @@
 import time
-import click
-from mira_edge.mira_edge import MiraEdge
-from mira_edge.model import EdgeEvent, MiraNode
-from mira_edge.protocol import Frame, MIRA_BROADCAST_ADDRESS
 
+import click
+
+from mira_edge.mira_edge import MiraEdge
+from mira_edge.mira_protocol import Frame
+from mira_edge.model import EdgeEvent, MiraNode
 from mira_edge.tui import MiraEdgeTUI
+
 
 def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
     if event == EdgeEvent.NODE_JOINED:
@@ -33,7 +35,7 @@ def main(port: str | None):
 
         while True:
             for node in mira.gateway.nodes:
-                mira.send_frame(dst=node.address_int, payload=b"Hello, World!")
+                mira.send_frame(dst=node.address, payload=b"Hello, World!")
             time.sleep(1)
             tui.render(mira)
 

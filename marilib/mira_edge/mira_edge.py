@@ -5,8 +5,9 @@ from typing import Callable
 
 import serial
 
-from mira_edge.model import EdgeEvent, MiraGateway, MiraNode, NodeAddress
-from mira_edge.protocol import Frame, Header, ProtocolPayloadParserException
+from mira_edge.mira_protocol import Frame, GatewayInfo, Header, MiraNode
+from mira_edge.model import EdgeEvent, MiraGateway
+from mira_edge.protocol import ProtocolPayloadParserException
 from mira_edge.serial_adapter import SerialAdapter
 from mira_edge.serial_interface import (
     SerialInterfaceException,
@@ -52,22 +53,21 @@ class MiraEdge:
         self.last_received_serial_data = datetime.now()
 
         event_type = data[0]
-        event_data = data[1:] if len(data) > 1 else None
 
         if event_type == EdgeEvent.NODE_JOINED:
-            address = NodeAddress(data[1:9])
+            address = int.from_bytes(data[1:9], "little")
             # print(f"Event: {EdgeEvent.NODE_JOINED.name} {address}")
             node = self.gateway.add_node(address)
             self.on_event(EdgeEvent.NODE_JOINED, node)
 
         elif event_type == EdgeEvent.NODE_LEFT:
-            address = NodeAddress(data[1:9])
+            address = int.from_bytes(data[1:9], "little")
             # print(f"Event: {EdgeEvent.NODE_LEFT.name} {address}")
             if node := self.gateway.remove_node(address):
                 self.on_event(EdgeEvent.NODE_LEFT, node)
 
         elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
-            address = NodeAddress(data[1:9])
+            address = int.from_bytes(data[1:9], "little")
             # print(f"Event: {EdgeEvent.NODE_KEEP_ALIVE.name} {address}")
             self.gateway.add_node(address)
 
@@ -76,15 +76,17 @@ class MiraEdge:
                 frame_bytes = data[1:]
                 frame = Frame().from_bytes(frame_bytes)
                 # print(f"Event: {EdgeEvent.NODE_DATA.name} {frame.header} {frame.payload.hex()}")
-                source_address = NodeAddress.from_int(frame.header.source)
-                self.gateway.register_received_frame(source_address)
+                self.gateway.register_received_frame(frame.header.source)
                 self.on_event(EdgeEvent.NODE_DATA, frame)
             except (ValueError, ProtocolPayloadParserException) as exc:
                 print(f"Failed to decode frame: {exc}")
 
         elif event_type == EdgeEvent.GATEWAY_INFO:
-            if event_data:
-                self.gateway.set_info(event_data)
+            try:
+                info = GatewayInfo().from_bytes(data[1:])
+                self.gateway.set_info(info)
+            except (ValueError, ProtocolPayloadParserException) as exc:
+                print(f"Failed to decode gateway info: {exc}")
 
         else:
             # print(f"Unknown event: {event_type} -- {data}")
