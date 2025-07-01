@@ -14,6 +14,12 @@ class FrameStats:
     sent: int = 0
     received: int = 0
 
+    @property
+    def success_rate(self) -> float:
+        if self.received == 0:
+            return 0
+        return self.received / self.sent
+
 
 @dataclass
 class MiraNode:
@@ -28,6 +34,12 @@ class MiraNode:
     @property
     def address_bytes(self) -> bytes:
         return self.address.to_bytes(8, "little")
+
+    def register_received_frame(self):
+        self.stats.received += 1
+
+    def register_sent_frame(self):
+        self.stats.sent += 1
 
     def __repr__(self):
         return f"MiraNode(address=0x{self.address_bytes.hex()}, last_seen={self.last_seen})"

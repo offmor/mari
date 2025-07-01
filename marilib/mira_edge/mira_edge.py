@@ -105,4 +105,6 @@ class MiraEdge:
         self.serial_interface.send_data(
             Frame(Header(destination=dst), payload=payload).to_bytes()
         )
+        if node := self.gateway.get_node(dst):
+            node.register_sent_frame()
         self.gateway.register_sent_frame()

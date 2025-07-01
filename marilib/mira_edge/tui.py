@@ -99,11 +99,18 @@ class MiraEdgeTUI:
 
         # Add columns
         table.add_column("Node Address", style="cyan")
-        table.add_column("RX", justify="right", style="")
+        table.add_column("TX", justify="right")
+        table.add_column("RX", justify="right")
+        table.add_column("SR", justify="right")
 
         # Add rows for each node
         for node in nodes:
-            table.add_row(f"0x{node.address:016X}", str(node.stats.received))
+            table.add_row(
+                f"0x{node.address:016X}",
+                str(node.stats.sent),
+                str(node.stats.received),
+                f"{node.stats.success_rate:.2%}",
+            )
 
         return table
 

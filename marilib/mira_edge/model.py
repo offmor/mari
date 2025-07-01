@@ -1,3 +1,4 @@
+from audioop import add
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import IntEnum
@@ -29,10 +30,13 @@ class MiraGateway:
     def set_info(self, info: GatewayInfo):
         self.info = info
 
-    def add_node(self, address: int) -> MiraNode:
-        node = next(
+    def get_node(self, address: int) -> MiraNode | None:
+        return next(
             (node for node in self.nodes if node.address == address), None
         )
+
+    def add_node(self, address: int) -> MiraNode:
+        node = self.get_node(address)
         if node:
             node.last_seen = datetime.now()
         else:
@@ -41,21 +45,17 @@ class MiraGateway:
         return node
 
     def remove_node(self, address: int) -> MiraNode | None:
-        node = next(
-            (node for node in self.nodes if node.address == address), None
-        )
+        node = self.get_node(address)
         if node:
             self.nodes.remove(node)
             return node
         return None
 
     def register_received_frame(self, address: int):
-        node = next(
-            (node for node in self.nodes if node.address == address), None
-        )
+        node = self.get_node(address)
         if node:
             node.last_seen = datetime.now()
-            node.stats.received += 1
+            node.register_received_frame()
             self.stats.received += 1
 
     def register_sent_frame(self):
