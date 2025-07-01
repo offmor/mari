@@ -10,57 +10,6 @@ MIRA_NET_ID_DEFAULT = 0x0001
 
 
 @dataclass
-class FrameStats:
-    sent: int = 0
-    received: int = 0
-
-    @property
-    def success_rate(self) -> float:
-        if self.received == 0:
-            return 0
-        return self.received / self.sent
-
-
-@dataclass
-class MiraNode:
-    address: int
-    last_seen: datetime = field(default_factory=lambda: datetime.now())
-    stats: FrameStats = field(default_factory=FrameStats)
-
-    @property
-    def is_alive(self) -> bool:
-        return datetime.now() - self.last_seen < timedelta(seconds=10)
-
-    @property
-    def address_bytes(self) -> bytes:
-        return self.address.to_bytes(8, "little")
-
-    def register_received_frame(self):
-        self.stats.received += 1
-
-    def register_sent_frame(self):
-        self.stats.sent += 1
-
-    def __repr__(self):
-        return f"MiraNode(address=0x{self.address_bytes.hex()}, last_seen={self.last_seen})"
-
-
-@dataclass
-class GatewayInfo(Packet):
-    metadata: list[PacketFieldMetadata] = field(
-        default_factory=lambda: [
-            PacketFieldMetadata(name="address", disp="addr", length=8),
-            PacketFieldMetadata(name="network_id", disp="net", length=2),
-            PacketFieldMetadata(name="schedule_id", disp="sch", length=1),
-        ]
-    )
-
-    address: int = 0
-    network_id: int = 0
-    schedule_id: int = 0
-
-
-@dataclass
 class Header(Packet):
     """Dataclass that holds MAC header fields."""
 

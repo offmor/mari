@@ -1,12 +1,11 @@
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import IntEnum
+from datetime import datetime
 from typing import Callable
 
 import serial
 
-from mira_edge.mira_protocol import Frame, GatewayInfo, Header, MiraNode
-from mira_edge.model import EdgeEvent, MiraGateway
+from mira_edge.mira_protocol import Frame, Header
+from mira_edge.model import EdgeEvent, GatewayInfo, MiraGateway, MiraNode
 from mira_edge.protocol import ProtocolPayloadParserException
 from mira_edge.serial_adapter import SerialAdapter
 from mira_edge.serial_interface import (
