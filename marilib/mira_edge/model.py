@@ -17,21 +17,53 @@ class EdgeEvent(IntEnum):
 
 
 @dataclass
-class FrameLog:
-    ts: datetime
+class FrameLogEntry:
     frame: Frame
+    ts: datetime = field(default_factory=lambda: datetime.now())
 
 
 @dataclass
 class FrameStats:
-    sent: int = 0
-    received: int = 0
+    sent: list[FrameLogEntry] = field(default_factory=list)
+    received: list[FrameLogEntry] = field(default_factory=list)
 
-    @property
-    def success_rate(self) -> float:
-        if self.received == 0:
+    def sent_count(self, window_secs: int = 0) -> int:
+        if window_secs == 0:
+            return len(self.sent)
+        else:
+            # return the number of sent frames in the last window_secs seconds
+            now = datetime.now()
+            return len(
+                [
+                    entry
+                    for entry in self.sent
+                    if now - entry.ts < timedelta(seconds=window_secs)
+                ]
+            )
+
+    def received_count(self, window_secs: int = 0) -> int:
+        if window_secs == 0:
+            return len(self.received)
+        else:
+            # return the number of received frames in the last window_secs seconds
+            now = datetime.now()
+            return len(
+                [
+                    entry
+                    for entry in self.received
+                    if now - entry.ts < timedelta(seconds=window_secs)
+                ]
+            )
+
+    def success_rate(self, window_secs: int = 0) -> float:
+        if self.sent_count() == 0:
             return 0
-        return self.received / self.sent
+        if window_secs == 0:
+            return self.received_count() / self.sent_count()
+        else:
+            return self.received_count(window_secs) / self.sent_count(
+                window_secs
+            )
 
 
 @dataclass
@@ -48,11 +80,11 @@ class MiraNode:
     def address_bytes(self) -> bytes:
         return self.address.to_bytes(8, "little")
 
-    def register_received_frame(self):
-        self.stats.received += 1
+    def register_received_frame(self, frame: Frame):
+        self.stats.received.append(FrameLogEntry(frame=frame))
 
-    def register_sent_frame(self):
-        self.stats.sent += 1
+    def register_sent_frame(self, frame: Frame):
+        self.stats.sent.append(FrameLogEntry(frame=frame))
 
     def __repr__(self):
         return f"MiraNode(address=0x{self.address_bytes.hex()}, last_seen={self.last_seen})"
@@ -108,12 +140,12 @@ class MiraGateway:
             return node
         return None
 
-    def register_received_frame(self, address: int):
-        node = self.get_node(address)
+    def register_received_frame(self, frame: Frame):
+        node = self.get_node(frame.header.source)
         if node:
             node.last_seen = datetime.now()
-            node.register_received_frame()
-            self.stats.received += 1
+            node.register_received_frame(frame)
+            self.stats.received.append(FrameLogEntry(frame=frame))
 
-    def register_sent_frame(self):
-        self.stats.sent += 1
+    def register_sent_frame(self, frame: Frame):
+        self.stats.sent.append(FrameLogEntry(frame=frame))
