@@ -58,7 +58,11 @@ class MiraEdgeTUI:
             status.append("connected", style="bold green")
         else:
             status.append("disconnected", style="bold red")
-        status.append(f" via {mira.port} at {mira.baudrate} baud  |  ")
+        status.append(f" via {mira.port} at {mira.baudrate} baud")
+        status.append(
+            f" since {mira.started_ts.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
+        status.append("  |  ")
         secs = int(
             (datetime.now() - mira.last_received_serial_data).total_seconds()
         )
@@ -79,9 +83,11 @@ class MiraEdgeTUI:
         status.append("Nodes: ", style="bold cyan")
         status.append(f"{len(mira.gateway.nodes)}  |  ")
         status.append("Frames TX: ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.sent}  |  ")
+        status.append(f"{mira.gateway.stats.sent_count()}  |  ")
         status.append("Frames RX: ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.received}")
+        status.append(f"{mira.gateway.stats.received_count()}  |  ")
+        status.append("SR: ", style="bold cyan")
+        status.append(f"{mira.gateway.stats.success_rate():.2%}")
 
         return Panel(
             status, title="[bold]MiraEdge Status", border_style="blue"
@@ -102,14 +108,16 @@ class MiraEdgeTUI:
         table.add_column("TX", justify="right")
         table.add_column("RX", justify="right")
         table.add_column("SR", justify="right")
+        table.add_column("SR (10s)", justify="right")
 
         # Add rows for each node
         for node in nodes:
             table.add_row(
                 f"0x{node.address:016X}",
-                str(node.stats.sent),
-                str(node.stats.received),
-                f"{node.stats.success_rate:.2%}",
+                str(node.stats.sent_count()),
+                str(node.stats.received_count()),
+                f"{node.stats.success_rate():.2%}",
+                f"{node.stats.success_rate(10):.2%}",
             )
 
         return table
