@@ -45,7 +45,7 @@ class MiraEdge:
         self.last_received_serial_data = datetime.now()
 
         event_type = data[0]
-        print(bytes(data).hex())
+        # print(bytes(data).hex())
 
         if event_type == EdgeEvent.NODE_JOINED:
             address = int.from_bytes(data[1:9], "little")
@@ -95,8 +95,10 @@ class MiraEdge:
 
     def send_frame(self, dst: int, payload: bytes):
         assert self.serial_interface is not None
-        frame = Frame(Header(destination=dst), payload=payload)
-        self.serial_interface.send_data(frame.to_bytes())
+        mira_frame = Frame(Header(destination=dst), payload=payload)
+        uart_frame_type = b"\x01"
+        uart_frame = uart_frame_type + mira_frame.to_bytes()
+        self.serial_interface.send_data(uart_frame)
         if node := self.gateway.get_node(dst):
-            node.register_sent_frame(frame)
-        self.gateway.register_sent_frame(frame)
+            node.register_sent_frame(mira_frame)
+        self.gateway.register_sent_frame(mira_frame)

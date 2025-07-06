@@ -34,11 +34,11 @@ def main(port: str | None):
         mira.connect_to_gateway()
 
         while True:
-            mira.send_frame(dst=0xFF, payload=b"A" * 3)
-            # for node in mira.gateway.nodes:
-            #     # print(f"Sending frame to 0x{node.address:016x}")
-            #     mira.send_frame(dst=node.address, payload=b"A" * 32)
-            time.sleep(0.3)
+            # mira.send_frame(dst=0xFF, payload=b"A" * 3)
+            for node in mira.gateway.nodes:
+                # print(f"Sending frame to 0x{node.address:016x}")
+                mira.send_frame(dst=node.address, payload=b"A" * 3)
+            time.sleep(1)
             tui.render(mira)
 
     except KeyboardInterrupt:

@@ -58,12 +58,16 @@ class FrameStats:
     def success_rate(self, window_secs: int = 0) -> float:
         if self.sent_count() == 0:
             return 0
+        rate = None
         if window_secs == 0:
-            return self.received_count() / self.sent_count()
+            rate = self.received_count() / self.sent_count()
         else:
-            return self.received_count(window_secs) / self.sent_count(
+            rate = self.received_count(window_secs) / self.sent_count(
                 window_secs
             )
+        # this is a hack, because of the way we count, sometimes
+        # received_count is greater than sent_count so we cap the rate at 1
+        return min(rate, 1)
 
 
 @dataclass

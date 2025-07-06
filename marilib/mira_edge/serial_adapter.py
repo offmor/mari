@@ -44,7 +44,7 @@ class SerialAdapter(GatewayAdapterBase):
         if self.hdlc_handler.state == HDLCState.READY:
             try:
                 payload = self.hdlc_handler.payload
-                print(f"Received payload: {payload.hex()}")
+                # print(f"Received payload: {payload.hex()}")
                 self.on_data_received(payload)
             except HDLCDecodeException as e:
                 print(f"Error decoding payload: {e}")
