@@ -8,8 +8,8 @@ from mira_edge.serial_hdlc import (
 )
 from mira_edge.serial_uart import SerialInterface
 
-# BAUDRATE = 1000000
-BAUDRATE = 115200
+BAUDRATE = 1000000
+# BAUDRATE = 115200
 
 hdlc_handler = HDLCHandler()
 
