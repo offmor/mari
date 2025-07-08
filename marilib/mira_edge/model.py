@@ -58,12 +58,14 @@ class FrameStats:
     def success_rate(self, window_secs: int = 0) -> float:
         if self.sent_count() == 0:
             return 0
+        rate = None
         if window_secs == 0:
-            return self.received_count() / self.sent_count()
+            rate = self.received_count() / self.sent_count()
         else:
-            return self.received_count(window_secs) / self.sent_count(
-                window_secs
-            )
+            rate = self.received_count(window_secs) / self.sent_count(window_secs)
+        # this is a hack, because of the way we count, sometimes
+        # received_count is greater than sent_count so we cap the rate at 1
+        return min(rate, 1)
 
 
 @dataclass
@@ -112,17 +114,13 @@ class MiraGateway:
     stats: FrameStats = field(default_factory=FrameStats)
 
     def __repr__(self):
-        return (
-            f"MiraGateway(info={self.info}, number of nodes: {len(self.nodes)}"
-        )
+        return f"MiraGateway(info={self.info}, number of nodes: {len(self.nodes)}"
 
     def set_info(self, info: GatewayInfo):
         self.info = info
 
     def get_node(self, address: int) -> MiraNode | None:
-        return next(
-            (node for node in self.nodes if node.address == address), None
-        )
+        return next((node for node in self.nodes if node.address == address), None)
 
     def add_node(self, address: int) -> MiraNode:
         node = self.get_node(address)

@@ -5,7 +5,10 @@ import click
 from mira_edge.mira_edge import MiraEdge
 from mira_edge.mira_protocol import Frame
 from mira_edge.model import EdgeEvent, MiraNode
+from mira_edge.serial_uart import get_default_port
 from mira_edge.tui import MiraEdgeTUI
+
+SERIAL_PORT_DEFAULT = get_default_port()
 
 
 def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
@@ -24,7 +27,12 @@ def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
 
 
 @click.command()
-@click.option('--port', '-p', help='Serial port to use (e.g., /dev/ttyUSB0)')
+@click.option(
+    "--port",
+    "-p",
+    default=SERIAL_PORT_DEFAULT,
+    help="Serial port to use (e.g., /dev/ttyACM0)",
+)
 def main(port: str | None):
     """Basic example of using MiraEdge to communicate with nodes."""
     mira = MiraEdge(on_event=on_event, port=port)
@@ -34,10 +42,11 @@ def main(port: str | None):
         mira.connect_to_gateway()
 
         while True:
+            # mira.send_frame(dst=0xFF, payload=b"A" * 3)
             for node in mira.gateway.nodes:
                 # print(f"Sending frame to 0x{node.address:016x}")
-                mira.send_frame(dst=node.address, payload=b"A" * 32)
-            time.sleep(0.3)
+                mira.send_frame(dst=node.address, payload=b"A" * 3)
+            time.sleep(1)
             tui.render(mira)
 
     except KeyboardInterrupt:
@@ -47,5 +56,5 @@ def main(port: str | None):
         mira.disconnect_from_gateway()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
