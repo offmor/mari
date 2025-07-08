@@ -27,6 +27,7 @@ class MiraEdge:
         if self.port is None:
             self.port = get_default_port()
         self.serial_interface = SerialAdapter(self.port, self.baudrate)
+        self.serial_interface.init(self.on_data_received)
 
     @property
     def serial_connected(self) -> bool:
@@ -78,14 +79,6 @@ class MiraEdge:
         else:
             # print(f"Unknown event: {event_type} -- {data}")
             print("?", end="", flush=True)
-
-    def connect_to_gateway(self):
-        assert self.serial_interface is not None
-        self.serial_interface.init(self.on_data_received)
-
-    def disconnect_from_gateway(self):
-        assert self.serial_interface is not None
-        # self.serial_interface.close()
 
     def send_frame(self, dst: int, payload: bytes):
         assert self.serial_interface is not None
