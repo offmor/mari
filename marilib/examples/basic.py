@@ -28,10 +28,10 @@ def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
 
 @click.command()
 @click.option(
-    '--port',
-    '-p',
+    "--port",
+    "-p",
     default=SERIAL_PORT_DEFAULT,
-    help='Serial port to use (e.g., /dev/ttyACM0)',
+    help="Serial port to use (e.g., /dev/ttyACM0)",
 )
 def main(port: str | None):
     """Basic example of using MiraEdge to communicate with nodes."""
@@ -39,6 +39,8 @@ def main(port: str | None):
     tui = MiraEdgeTUI()
 
     try:
+        mira.connect_to_gateway()
+
         while True:
             # mira.send_frame(dst=0xFF, payload=b"A" * 3)
             for node in mira.gateway.nodes:
@@ -51,7 +53,8 @@ def main(port: str | None):
         print("\nInterrupted by user")
     finally:
         tui.close()
+        mira.disconnect_from_gateway()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

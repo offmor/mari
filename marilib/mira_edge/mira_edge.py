@@ -18,9 +18,7 @@ class MiraEdge:
     baudrate: int = 1_000_000
     gateway: MiraGateway = field(default_factory=MiraGateway)
     serial_interface: SerialAdapter | None = None
-    last_received_serial_data: datetime = field(
-        default_factory=lambda: datetime.now()
-    )
+    last_received_serial_data: datetime = field(default_factory=lambda: datetime.now())
     started_ts: datetime = field(default_factory=lambda: datetime.now())
 
     def __post_init__(self):

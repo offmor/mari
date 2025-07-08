@@ -210,18 +210,11 @@ class HDLCHandler:
 
     def handle_byte(self, byte):
         """Handle new byte received."""
-        if (
-            self.state in [HDLCState.IDLE, HDLCState.READY]
-            and byte == HDLC_FLAG
-        ):
+        if self.state in [HDLCState.IDLE, HDLCState.READY] and byte == HDLC_FLAG:
             self.output = bytearray()
             self.fcs = HDLC_FCS_INIT
             self.state = HDLCState.RECEIVING
-        elif (
-            self.output
-            and self.state == HDLCState.RECEIVING
-            and byte == HDLC_FLAG
-        ):
+        elif self.output and self.state == HDLCState.RECEIVING and byte == HDLC_FLAG:
             # End of frame
             self.state = HDLCState.READY
         elif self.state == HDLCState.RECEIVING and byte != HDLC_FLAG:
