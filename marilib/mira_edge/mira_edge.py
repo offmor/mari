@@ -6,9 +6,7 @@ from mira_edge.mira_protocol import Frame, Header
 from mira_edge.model import EdgeEvent, GatewayInfo, MiraGateway, MiraNode
 from mira_edge.protocol import ProtocolPayloadParserException
 from mira_edge.serial_adapter import SerialAdapter
-from mira_edge.serial_interface import (
-    get_default_port,
-)
+from mira_edge.serial_uart import get_default_port
 
 
 @dataclass

@@ -10,7 +10,7 @@ from mira_edge.serial_hdlc import (
     HDLCState,
     hdlc_encode,
 )
-from mira_edge.serial_interface import SerialInterface
+from mira_edge.serial_uart import SerialInterface
 
 
 class GatewayAdapterBase(ABC):
