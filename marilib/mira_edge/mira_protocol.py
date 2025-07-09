@@ -9,6 +9,24 @@ MIRA_NET_ID_DEFAULT = 0x0001
 
 
 @dataclass
+class HeaderStats(Packet):
+    """Dataclass that holds MAC header stats."""
+
+    metadata: list[PacketFieldMetadata] = dataclasses.field(
+        default_factory=lambda: [
+            PacketFieldMetadata(name="rssi", disp="rssi", length=1),
+        ]
+    )
+    rssi: int = 0
+
+    @property
+    def rssi_dbm(self) -> int:
+        if self.rssi > 127:
+            return self.rssi - 255
+        return self.rssi
+
+
+@dataclass
 class Header(Packet):
     """Dataclass that holds MAC header fields."""
 
@@ -37,12 +55,15 @@ class Frame:
     """Data class that holds a payload packet."""
 
     header: Header = None
+    stats: HeaderStats = dataclasses.field(default_factory=HeaderStats)
     payload: bytes = b""
 
     def from_bytes(self, bytes_):
         self.header = Header().from_bytes(bytes_[0:20])
         if len(bytes_) > 20:
-            self.payload = bytes_[20:]
+            self.stats = HeaderStats().from_bytes(bytes_[20:21])
+            if len(bytes_) > 21:
+                self.payload = bytes_[21:]
         return self
 
     def to_bytes(self, byteorder="little") -> bytes:

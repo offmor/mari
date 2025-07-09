@@ -22,7 +22,7 @@ def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
         # print("0", end="", flush=True)
     elif event == EdgeEvent.NODE_DATA:
         assert isinstance(event_data, Frame)
-        # print(f"Got frame from 0x{event_data.header.source:016x}: {event_data.payload.hex()}")
+        # print(f"Got frame from 0x{event_data.header.source:016x}: {event_data.payload.hex()}, rssi: {event_data.stats.rssi_dbm}")
         # print(".", end="", flush=True)
 
 
@@ -44,7 +44,7 @@ def main(port: str | None):
             for node in mira.gateway.nodes:
                 # print(f"Sending frame to 0x{node.address:016x}")
                 mira.send_frame(dst=node.address, payload=b"A" * 3)
-            time.sleep(0.3)
+            time.sleep(0.25)
             tui.render(mira)
 
     except KeyboardInterrupt:
