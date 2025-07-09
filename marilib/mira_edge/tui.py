@@ -77,7 +77,7 @@ class MiraEdgeTUI:
         status.append(f"{mira.gateway.stats.sent_count()}  |  ")
         status.append("Frames RX: ", style="bold cyan")
         status.append(f"{mira.gateway.stats.received_count()}  |  ")
-        status.append("SR: ", style="bold cyan")
+        status.append("SR' (30s): ", style="bold cyan")
         status.append(f"{mira.gateway.stats.success_rate(30):.2%}")
 
         return Panel(status, title="[bold]MiraEdge Status", border_style="blue")
