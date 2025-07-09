@@ -14,9 +14,7 @@ from mira_edge.mira_edge import MiraEdge
 class MiraEdgeTUI:
     def __init__(self, max_tables=3):
         self.console = Console()
-        self.live = Live(
-            console=self.console, auto_refresh=False, transient=True
-        )
+        self.live = Live(console=self.console, auto_refresh=False, transient=True)
         self.live.start()
         self.max_tables = max_tables
 
@@ -32,9 +30,7 @@ class MiraEdgeTUI:
         """
         terminal_height = self.console.height
         available_height = terminal_height - 8 - 2 - 2 - 1 - 2
-        return max(
-            2, available_height
-        )  # Minimum 2 rows to always show something
+        return max(2, available_height)  # Minimum 2 rows to always show something
 
     def render(self, mira: MiraEdge):
         # Create layout
@@ -58,13 +54,9 @@ class MiraEdgeTUI:
         else:
             status.append("disconnected", style="bold red")
         status.append(f" via {mira.port} at {mira.baudrate} baud")
-        status.append(
-            f" since {mira.started_ts.strftime('%Y-%m-%d %H:%M:%S')}"
-        )
+        status.append(f" since {mira.started_ts.strftime('%Y-%m-%d %H:%M:%S')}")
         status.append("  |  ")
-        secs = int(
-            (datetime.now() - mira.last_received_serial_data).total_seconds()
-        )
+        secs = int((datetime.now() - mira.last_received_serial_data).total_seconds())
         style = "bold green" if secs <= 1 else "bold red"
         status.append(f"last received: {secs}s ago", style=style)
         status.append("\n\n")
@@ -88,9 +80,7 @@ class MiraEdgeTUI:
         status.append("SR: ", style="bold cyan")
         status.append(f"{mira.gateway.stats.success_rate(30):.2%}")
 
-        return Panel(
-            status, title="[bold]MiraEdge Status", border_style="blue"
-        )
+        return Panel(status, title="[bold]MiraEdge Status", border_style="blue")
 
     def create_nodes_table(self, nodes, title="") -> Table:
         """Create a table for a subset of nodes."""
@@ -140,16 +130,11 @@ class MiraEdgeTUI:
             current_table_nodes.append(node)
 
             # Create a new table when we hit max rows or last node
-            if (
-                len(current_table_nodes) == max_rows
-                or i == len(nodes_to_display) - 1
-            ):
+            if len(current_table_nodes) == max_rows or i == len(nodes_to_display) - 1:
                 start_idx = i - len(current_table_nodes) + 1
                 end_idx = i + 1
                 title = f"Nodes {start_idx + 1}-{end_idx}"
-                tables.append(
-                    self.create_nodes_table(current_table_nodes, title)
-                )
+                tables.append(self.create_nodes_table(current_table_nodes, title))
                 current_table_nodes = []
 
                 # Stop if we've hit max tables
@@ -174,9 +159,7 @@ class MiraEdgeTUI:
         else:
             panel_content = content
 
-        return Panel(
-            panel_content, title="[bold]Connected Nodes", border_style="blue"
-        )
+        return Panel(panel_content, title="[bold]Connected Nodes", border_style="blue")
 
     def close(self):
         """Clean up the live display."""
