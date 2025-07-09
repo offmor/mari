@@ -67,6 +67,23 @@ class FrameStats:
         # received_count is greater than sent_count so we cap the rate at 1
         return min(rate, 1)
 
+    def received_rssi_dbm(self, window_secs: int = 0) -> float:
+        if len(self.received) == 0:
+            return 0
+        if window_secs == 0:
+            # get the last rssi value
+            rssi = self.received[-1].frame.stats.rssi_dbm
+        else:
+            now = datetime.now()
+            rssi = sum(
+                [
+                    entry.frame.stats.rssi_dbm
+                    for entry in self.received
+                    if now - entry.ts < timedelta(seconds=window_secs)
+                ]
+            ) / len(self.received)
+        return int(rssi)
+
 
 @dataclass
 class MiraNode:

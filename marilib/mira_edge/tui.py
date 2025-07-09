@@ -96,8 +96,9 @@ class MiraEdgeTUI:
         table.add_column("Node Address", style="cyan")
         table.add_column("TX", justify="right")
         table.add_column("RX", justify="right")
-        # table.add_column("SR", justify="right")
         table.add_column("SR", justify="right")
+        table.add_column("SR'", justify="right")
+        table.add_column("RSSI", justify="right")
 
         # Add rows for each node
         for node in nodes:
@@ -105,8 +106,9 @@ class MiraEdgeTUI:
                 f"0x{node.address:016X}",
                 str(node.stats.sent_count()),
                 str(node.stats.received_count()),
-                # f"{node.stats.success_rate():.2%}",
-                f"{node.stats.success_rate(30):.2%}",
+                f"{node.stats.success_rate():>4.0%}",
+                f"{node.stats.success_rate(30):>4.0%}",
+                f"{node.stats.received_rssi_dbm()}",
             )
 
         return table
