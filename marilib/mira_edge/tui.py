@@ -77,6 +77,10 @@ class MiraEdgeTUI:
         status.append(f"{mira.gateway.stats.sent_count()}  |  ")
         status.append("Frames RX: ", style="bold cyan")
         status.append(f"{mira.gateway.stats.received_count()}  |  ")
+        status.append("TX/s: ", style="bold cyan")
+        status.append(f"{mira.gateway.stats.sent_count(1)}  |  ")
+        status.append("RX/s: ", style="bold cyan")
+        status.append(f"{mira.gateway.stats.received_count(1)}  |  ")
         status.append("SR' (30s): ", style="bold cyan")
         status.append(f"{mira.gateway.stats.success_rate(30):.2%}")
 
@@ -95,7 +99,9 @@ class MiraEdgeTUI:
         # Add columns
         table.add_column("Node Address", style="cyan")
         table.add_column("TX", justify="right")
+        table.add_column("TX/s", justify="right")
         table.add_column("RX", justify="right")
+        table.add_column("RX/s", justify="right")
         table.add_column("SR", justify="right")
         table.add_column("SR'", justify="right")
         table.add_column("RSSI", justify="right")
@@ -105,7 +111,9 @@ class MiraEdgeTUI:
             table.add_row(
                 f"0x{node.address:016X}",
                 str(node.stats.sent_count()),
+                str(node.stats.sent_count(1)),
                 str(node.stats.received_count()),
+                str(node.stats.received_count(1)),
                 f"{node.stats.success_rate():>4.0%}",
                 f"{node.stats.success_rate(30):>4.0%}",
                 f"{node.stats.received_rssi_dbm()}",
