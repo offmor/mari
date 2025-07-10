@@ -76,9 +76,11 @@ class MiraEdgeTUI:
         status.append("Frames TX: ", style="bold cyan")
         status.append(f"{mira.gateway.stats.sent_count()}  |  ")
         status.append("Frames RX: ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.received_count()}  |  ")
-        status.append("SR' (30s): ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.success_rate(30):.2%}")
+        status.append(f"{mira.gateway.stats.received_count()}")
+        # FIXME: this statistics should be computed differently for broadcasted frames, that's why it's commented out for now
+        # status.append("  |  ")
+        # status.append("SR' (30s): ", style="bold cyan")
+        # status.append(f"{mira.gateway.stats.success_rate(30):.2%}")
 
         return Panel(status, title="[bold]MiraEdge Status", border_style="blue")
 
@@ -96,7 +98,7 @@ class MiraEdgeTUI:
         table.add_column("Node Address", style="cyan")
         table.add_column("TX", justify="right")
         table.add_column("RX", justify="right")
-        table.add_column("SR", justify="right")
+        # table.add_column("SR", justify="right")
         table.add_column("SR'", justify="right")
         table.add_column("RSSI", justify="right")
 
@@ -106,9 +108,9 @@ class MiraEdgeTUI:
                 f"0x{node.address:016X}",
                 str(node.stats.sent_count()),
                 str(node.stats.received_count()),
-                f"{node.stats.success_rate():>4.0%}",
+                # f"{node.stats.success_rate():>4.0%}",
                 f"{node.stats.success_rate(30):>4.0%}",
-                f"{node.stats.received_rssi_dbm()}",
+                f"{node.stats.received_rssi_dbm(5)}",
             )
 
         return table
