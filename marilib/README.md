@@ -6,7 +6,8 @@ It connects to a Mira gateway via UART.
 ## Example with TUI
 MiraEdge provides a stateful class with gateway and node information, network statistics, and a rich real-time TUI:
 
-![mira-edge-09jul2025](https://github.com/user-attachments/assets/c659ece4-361a-4f7a-95ff-b0e88c09248a)
+[mira-edge-2.webm](https://github.com/user-attachments/assets/fe50f2ba-8e67-4522-8700-69730f8e3aee)
+
 See the how it works in `examples/basic.py`.
 
 ## Minimal example
