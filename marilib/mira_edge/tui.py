@@ -76,7 +76,7 @@ class MiraEdgeTUI:
         status.append("Frames TX: ", style="bold cyan")
         status.append(f"{mira.gateway.stats.sent_count()}  |  ")
         status.append("Frames RX: ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.received_count()}")
+        status.append(f"{mira.gateway.stats.received_count()} |  ")
         status.append("TX/s: ", style="bold cyan")
         status.append(f"{mira.gateway.stats.sent_count(1)}  |  ")
         status.append("RX/s: ", style="bold cyan")
