@@ -11,15 +11,13 @@ from mira_edge.serial_uart import get_default_port
 
 @dataclass
 class MiraEdge:
-    on_event: Callable[[EdgeEvent, MiraNode | Frame], None] = field(
-        default_factory=lambda: lambda *args: None
-    )
+    cb_application: Callable[[EdgeEvent, MiraNode | Frame], None]
     port: str | None = None
     baudrate: int = 1_000_000
     gateway: MiraGateway = field(default_factory=MiraGateway)
     serial_interface: SerialAdapter | None = None
-    last_received_serial_data: datetime = field(default_factory=lambda: datetime.now())
-    started_ts: datetime = field(default_factory=lambda: datetime.now())
+    started_ts: datetime = field(default_factory=datetime.now)
+    last_received_serial_data: datetime = field(default_factory=datetime.now)
 
     def __post_init__(self):
         if self.port is None:
@@ -44,13 +42,13 @@ class MiraEdge:
             address = int.from_bytes(data[1:9], "little")
             # print(f"Event: {EdgeEvent.NODE_JOINED.name} {address}")
             node = self.gateway.add_node(address)
-            self.on_event(EdgeEvent.NODE_JOINED, node)
+            self.cb_application(EdgeEvent.NODE_JOINED, node)
 
         elif event_type == EdgeEvent.NODE_LEFT:
             address = int.from_bytes(data[1:9], "little")
             # print(f"Event: {EdgeEvent.NODE_LEFT.name} {address}")
             if node := self.gateway.remove_node(address):
-                self.on_event(EdgeEvent.NODE_LEFT, node)
+                self.cb_application(EdgeEvent.NODE_LEFT, node)
 
         elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
             address = int.from_bytes(data[1:9], "little")
@@ -63,7 +61,7 @@ class MiraEdge:
                 frame = Frame().from_bytes(frame_bytes)
                 # print(f"Event: {EdgeEvent.NODE_DATA.name} {frame.header} {frame.payload.hex()}")
                 self.gateway.register_received_frame(frame)
-                self.on_event(EdgeEvent.NODE_DATA, frame)
+                self.cb_application(EdgeEvent.NODE_DATA, frame)
             except (ValueError, ProtocolPayloadParserException) as exc:
                 print(f"Failed to decode frame: {exc}")
 
