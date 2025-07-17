@@ -8,10 +8,10 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from mira_edge.mira_edge import MiraEdge
+from marilib.marilib import MariLib
 
 
-class MiraEdgeTUI:
+class MariLibTUI:
     def __init__(self, max_tables=3, re_render_max_freq=0.2):
         self.console = Console()
         self.live = Live(console=self.console, auto_refresh=False, transient=True)
@@ -34,7 +34,7 @@ class MiraEdgeTUI:
         available_height = terminal_height - 8 - 2 - 2 - 1 - 2
         return max(2, available_height)  # Minimum 2 rows to always show something
 
-    def render(self, mira: MiraEdge):
+    def render(self, mari: MariLib):
         if datetime.now() - self.last_render_time < timedelta(
             seconds=self.re_render_max_freq
         ):
@@ -46,56 +46,57 @@ class MiraEdgeTUI:
 
         # Create a layout with both components
         layout.split(
-            Layout(self.create_header_panel(mira), size=8),
-            Layout(self.create_nodes_panel(mira)),
+            Layout(self.create_header_panel(mari), size=8),
+            Layout(self.create_nodes_panel(mari)),
         )
 
         # Update display
         self.live.update(layout, refresh=True)
 
-    def create_header_panel(self, mira: MiraEdge) -> Panel:
+    def create_header_panel(self, mari: MariLib) -> Panel:
         status = Text()
-        status.append("MiraEdge", style="bold cyan")
+        status.append("MariLib", style="bold cyan")
+        status.append(" Edge", style="bold")
         status.append(" is ", style="bold")
-        if mira.serial_connected:
+        if mari.serial_connected:
             status.append("connected", style="bold green")
         else:
             status.append("disconnected", style="bold red")
-        status.append(f" via {mira.port} at {mira.baudrate} baud")
-        status.append(f" since {mira.started_ts.strftime('%Y-%m-%d %H:%M:%S')}")
+        status.append(f" via {mari.port} at {mari.baudrate} baud")
+        status.append(f" since {mari.started_ts.strftime('%Y-%m-%d %H:%M:%S')}")
         status.append("  |  ")
-        secs = int((datetime.now() - mira.last_received_serial_data).total_seconds())
+        secs = int((datetime.now() - mari.last_received_serial_data).total_seconds())
         style = "bold green" if secs <= 1 else "bold red"
         status.append(f"last received: {secs}s ago", style=style)
         status.append("\n\n")
 
         # Gateway info
         status.append("Gateway: ", style="bold cyan")
-        status.append(f"0x{mira.gateway.info.address:016X}  |  ")
+        status.append(f"0x{mari.gateway.info.address:016X}  |  ")
         status.append("Network ID: ", style="bold cyan")
-        status.append(f"{mira.gateway.info.network_id}  |  ")
+        status.append(f"{mari.gateway.info.network_id}  |  ")
         status.append("Schedule ID: ", style="bold cyan")
-        status.append(f"{mira.gateway.info.schedule_id}\n")
+        status.append(f"{mari.gateway.info.schedule_id}\n")
 
         # Network stats
         status.append("\nStats:    ", style="bold yellow")
         status.append("Nodes: ", style="bold cyan")
-        status.append(f"{len(mira.gateway.nodes)}  |  ")
+        status.append(f"{len(mari.gateway.nodes)}  |  ")
         status.append("Frames TX: ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.sent_count()}  |  ")
+        status.append(f"{mari.gateway.stats.sent_count()}  |  ")
         status.append("Frames RX: ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.received_count()} |  ")
+        status.append(f"{mari.gateway.stats.received_count()} |  ")
         status.append("TX/s: ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.sent_count(1)}  |  ")
+        status.append(f"{mari.gateway.stats.sent_count(1)}  |  ")
         status.append("RX/s: ", style="bold cyan")
-        status.append(f"{mira.gateway.stats.received_count(1)}")
+        status.append(f"{mari.gateway.stats.received_count(1)}")
         # status.append(f"  |  ")
         # FIXME: this statistics should be computed differently for broadcasted frames, that's why it's commented out for now
         # status.append("  |  ")
         # status.append("SR' (30s): ", style="bold cyan")
-        # status.append(f"{mira.gateway.stats.success_rate(30):.2%}")
+        # status.append(f"{mari.gateway.stats.success_rate(30):.2%}")
 
-        return Panel(status, title="[bold]MiraEdge Status", border_style="blue")
+        return Panel(status, title="[bold]MariLib Status", border_style="blue")
 
     def create_nodes_table(self, nodes, title="") -> Table:
         """Create a table for a subset of nodes."""
@@ -130,9 +131,9 @@ class MiraEdgeTUI:
 
         return table
 
-    def create_nodes_panel(self, mira: MiraEdge) -> Panel:
+    def create_nodes_panel(self, mari: MariLib) -> Panel:
         """Create a panel containing the nodes tables."""
-        nodes = mira.gateway.nodes
+        nodes = mari.gateway.nodes
         total_nodes = len(nodes)
         max_rows = self.get_max_rows()
 
