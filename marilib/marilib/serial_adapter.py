@@ -4,13 +4,13 @@ from abc import ABC, abstractmethod
 
 from rich import print
 
-from mari_edge.serial_hdlc import (
+from marilib.serial_hdlc import (
     HDLCDecodeException,
     HDLCHandler,
     HDLCState,
     hdlc_encode,
 )
-from mari_edge.serial_uart import SerialInterface
+from marilib.serial_uart import SerialInterface
 
 
 class GatewayAdapterBase(ABC):

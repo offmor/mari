@@ -8,10 +8,10 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from mari_edge.mari_edge import MariEdge
+from marilib.marilib import MariLib
 
 
-class MariEdgeTUI:
+class MariLibTUI:
     def __init__(self, max_tables=3, re_render_max_freq=0.2):
         self.console = Console()
         self.live = Live(console=self.console, auto_refresh=False, transient=True)
@@ -34,7 +34,7 @@ class MariEdgeTUI:
         available_height = terminal_height - 8 - 2 - 2 - 1 - 2
         return max(2, available_height)  # Minimum 2 rows to always show something
 
-    def render(self, mari: MariEdge):
+    def render(self, mari: MariLib):
         if datetime.now() - self.last_render_time < timedelta(
             seconds=self.re_render_max_freq
         ):
@@ -53,9 +53,10 @@ class MariEdgeTUI:
         # Update display
         self.live.update(layout, refresh=True)
 
-    def create_header_panel(self, mari: MariEdge) -> Panel:
+    def create_header_panel(self, mari: MariLib) -> Panel:
         status = Text()
-        status.append("MariEdge", style="bold cyan")
+        status.append("MariLib", style="bold cyan")
+        status.append(" Edge", style="bold")
         status.append(" is ", style="bold")
         if mari.serial_connected:
             status.append("connected", style="bold green")
@@ -95,7 +96,7 @@ class MariEdgeTUI:
         # status.append("SR' (30s): ", style="bold cyan")
         # status.append(f"{mari.gateway.stats.success_rate(30):.2%}")
 
-        return Panel(status, title="[bold]MariEdge Status", border_style="blue")
+        return Panel(status, title="[bold]MariLib Status", border_style="blue")
 
     def create_nodes_table(self, nodes, title="") -> Table:
         """Create a table for a subset of nodes."""
@@ -130,7 +131,7 @@ class MariEdgeTUI:
 
         return table
 
-    def create_nodes_panel(self, mari: MariEdge) -> Panel:
+    def create_nodes_panel(self, mari: MariLib) -> Panel:
         """Create a panel containing the nodes tables."""
         nodes = mari.gateway.nodes
         total_nodes = len(nodes)

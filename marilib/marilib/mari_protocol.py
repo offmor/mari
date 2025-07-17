@@ -1,7 +1,7 @@
 import dataclasses
 from dataclasses import dataclass
 
-from mari_edge.protocol import Packet, PacketFieldMetadata, PacketType
+from marilib.protocol import Packet, PacketFieldMetadata, PacketType
 
 MARI_PROTOCOL_VERSION = 2
 MARI_BROADCAST_ADDRESS = 0xFFFFFFFFFFFFFFFF

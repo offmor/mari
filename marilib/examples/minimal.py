@@ -1,11 +1,11 @@
 import time
 
-from mari_edge.mari_edge import MariEdge
-from mari_edge.serial_uart import get_default_port
+from marilib.marilib import MariLib
+from marilib.serial_uart import get_default_port
 
 
 def main():
-    mari = MariEdge(lambda event, data: print(event.name, data), get_default_port())
+    mari = MariLib(lambda event, data: print(event.name, data), get_default_port())
     while True:
         for node in mari.gateway.nodes:
             mari.send_frame(dst=node.address, payload=b"A" * 3)

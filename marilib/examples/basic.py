@@ -2,11 +2,11 @@ import time
 
 import click
 
-from mari_edge.mari_edge import MariEdge
-from mari_edge.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
-from mari_edge.model import EdgeEvent, MariNode
-from mari_edge.serial_uart import get_default_port
-from mari_edge.tui import MariEdgeTUI
+from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
+from marilib.marilib import MariLib
+from marilib.model import EdgeEvent, MariNode
+from marilib.serial_uart import get_default_port
+from marilib.tui import MariLibTUI
 
 SERIAL_PORT_DEFAULT = get_default_port()
 
@@ -34,9 +34,9 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     help="Serial port to use (e.g., /dev/ttyACM0)",
 )
 def main(port: str | None):
-    """Basic example of using MariEdge to communicate with nodes."""
-    mari = MariEdge(on_event, port)
-    tui = MariEdgeTUI()
+    """Basic example of using MariLib to communicate with nodes."""
+    mari = MariLib(on_event, port)
+    tui = MariLibTUI()
 
     try:
         while True:

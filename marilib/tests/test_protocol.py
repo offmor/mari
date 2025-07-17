@@ -1,4 +1,4 @@
-from mari_edge.mari_protocol import Frame, Header
+from marilib.mari_protocol import Frame, Header
 
 
 def test_header_size():

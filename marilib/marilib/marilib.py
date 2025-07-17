@@ -2,15 +2,15 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable
 
-from mari_edge.mari_protocol import MARI_BROADCAST_ADDRESS, Frame, Header
-from mari_edge.model import EdgeEvent, GatewayInfo, MariGateway, MariNode
-from mari_edge.protocol import ProtocolPayloadParserException
-from mari_edge.serial_adapter import SerialAdapter
-from mari_edge.serial_uart import get_default_port
+from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame, Header
+from marilib.model import EdgeEvent, GatewayInfo, MariGateway, MariNode
+from marilib.protocol import ProtocolPayloadParserException
+from marilib.serial_adapter import SerialAdapter
+from marilib.serial_uart import get_default_port
 
 
 @dataclass
-class MariEdge:
+class MariLib:
     cb_application: Callable[[EdgeEvent, MariNode | Frame], None]
     port: str | None = None
     baudrate: int = 1_000_000

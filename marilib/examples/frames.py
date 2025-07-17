@@ -1,4 +1,4 @@
-from mari_edge.protocol import Header
+from marilib.protocol import Header
 
 header = Header()
 print(header.to_bytes())

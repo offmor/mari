@@ -1,25 +1,25 @@
-# MariEdge 💫 👀 🐍
+# MariLib 💫 👀 🐍
 
-MariEdge is a Python library to interact with a local [Mari](https://github.com/DotBots/mari) network.
+MariLib is a Python library to interact with a local [Mari](https://github.com/DotBots/mari) network.
 It connects to a Mari gateway via UART.
 
 ## Example with TUI
-MariEdge provides a stateful class with gateway and node information, network statistics, and a rich real-time TUI:
+MariLib provides a stateful class with gateway and node information, network statistics, and a rich real-time TUI:
 
 [mari-edge-2.webm](https://github.com/user-attachments/assets/fe50f2ba-8e67-4522-8700-69730f8e3aee)
 
 See the how it works in `examples/basic.py`.
 
 ## Minimal example
-Here is a minimal example showcasing how to use MariEdge:
+Here is a minimal example showcasing how to use MariLib:
 
 ```python
 import time
-from mari_edge.mari_edge import MariEdge
-from mari_edge.serial_uart import get_default_port
+from marilib.marilib import MariLib
+from marilib.serial_uart import get_default_port
 
 def main():
-    mari = MariEdge(lambda event, data: print(event.name, data), get_default_port())
+    mari = MariLib(lambda event, data: print(event.name, data), get_default_port())
     while True:
         for node in mari.gateway.nodes:
             mari.send_frame(dst=node.address, payload=b"A" * 3)

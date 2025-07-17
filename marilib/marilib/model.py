@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import IntEnum
 
-from mari_edge.mari_protocol import Frame
-from mari_edge.protocol import Packet, PacketFieldMetadata
+from marilib.mari_protocol import Frame
+from marilib.protocol import Packet, PacketFieldMetadata
 
 
 class EdgeEvent(IntEnum):

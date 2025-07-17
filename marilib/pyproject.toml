@@ -12,10 +12,10 @@ exclude = [
 ]
 
 [tool.hatch.version]
-path = "mari_edge/__init__.py"
+path = "marilib/__init__.py"
 
 [project]
-name = "mari_edge"
+name = "marilib"
 dynamic = ["version"]
 authors = [
     { name="Geovane Fedrecheski", email="geovane.fedrecheski@inria.fr" },
@@ -27,7 +27,7 @@ dependencies = [
     "structlog      == 24.4.0",
     "tqdm           == 4.66.5",
 ]
-description = "MariEdge is a Python library for interacting with the Mari network."
+description = "MariLib is a Python library for interacting with the Mari network."
 readme = "README.md"
 license = { text="BSD" }
 requires-python = ">=3.7"
@@ -40,11 +40,11 @@ classifiers = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/DotBots/mari_edge"
-"Bug Tracker" = "https://github.com/DotBots/mari_edge/issues"
+"Homepage" = "https://github.com/DotBots/marilib"
+"Bug Tracker" = "https://github.com/DotBots/marilib/issues"
 
 [project.scripts]
-mari_edge = "mari_edge.cli.main:main"
+marilib = "marilib.cli.main:main"
 
 [tool.ruff]
 lint.select = ["E", "F"]
