@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import IntEnum
 
-from mira_edge.mira_protocol import Frame
-from mira_edge.protocol import Packet, PacketFieldMetadata
+from mari_edge.mari_protocol import Frame
+from mari_edge.protocol import Packet, PacketFieldMetadata
 
 
 class EdgeEvent(IntEnum):
@@ -85,7 +85,7 @@ class FrameStats:
 
 
 @dataclass
-class MiraNode:
+class MariNode:
     address: int
     last_seen: datetime = field(default_factory=lambda: datetime.now())
     stats: FrameStats = field(default_factory=FrameStats)
@@ -105,7 +105,7 @@ class MiraNode:
         self.stats.sent.append(FrameLogEntry(frame=frame))
 
     def __repr__(self):
-        return f"MiraNode(address=0x{self.address_bytes.hex()}, last_seen={self.last_seen})"
+        return f"MariNode(address=0x{self.address_bytes.hex()}, last_seen={self.last_seen})"
 
 
 @dataclass
@@ -124,13 +124,13 @@ class GatewayInfo(Packet):
 
 
 @dataclass
-class MiraGateway:
+class MariGateway:
     info: GatewayInfo = field(default_factory=GatewayInfo)
-    nodes: list[MiraNode] = field(default_factory=list)
+    nodes: list[MariNode] = field(default_factory=list)
     stats: FrameStats = field(default_factory=FrameStats)
 
     def __repr__(self):
-        return f"MiraGateway(info={self.info}, number of nodes: {len(self.nodes)}"
+        return f"MariGateway(info={self.info}, number of nodes: {len(self.nodes)}"
 
     def update(self):
         # remove nodes that have not been seen in the last 2 second
@@ -143,19 +143,19 @@ class MiraGateway:
     def set_info(self, info: GatewayInfo):
         self.info = info
 
-    def get_node(self, address: int) -> MiraNode | None:
+    def get_node(self, address: int) -> MariNode | None:
         return next((node for node in self.nodes if node.address == address), None)
 
-    def add_node(self, address: int) -> MiraNode:
+    def add_node(self, address: int) -> MariNode:
         node = self.get_node(address)
         if node:
             node.last_seen = datetime.now()
         else:
-            node = MiraNode(address)
+            node = MariNode(address)
             self.nodes.append(node)
         return node
 
-    def remove_node(self, address: int) -> MiraNode | None:
+    def remove_node(self, address: int) -> MariNode | None:
         node = self.get_node(address)
         if node:
             self.nodes.remove(node)

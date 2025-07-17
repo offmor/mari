@@ -1,4 +1,4 @@
-from mira_edge.mira_protocol import Frame, Header
+from mari_edge.mari_protocol import Frame, Header
 
 
 def test_header_size():

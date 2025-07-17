@@ -1,12 +1,12 @@
 import time
 
-from mira_edge.serial_hdlc import (
+from mari_edge.serial_hdlc import (
     HDLCDecodeException,
     HDLCHandler,
     HDLCState,
     hdlc_encode,
 )
-from mira_edge.serial_uart import SerialInterface
+from mari_edge.serial_uart import SerialInterface
 
 BAUDRATE = 1000000
 # BAUDRATE = 115200

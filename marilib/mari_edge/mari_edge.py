@@ -2,19 +2,19 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable
 
-from mira_edge.mira_protocol import MIRA_BROADCAST_ADDRESS, Frame, Header
-from mira_edge.model import EdgeEvent, GatewayInfo, MiraGateway, MiraNode
-from mira_edge.protocol import ProtocolPayloadParserException
-from mira_edge.serial_adapter import SerialAdapter
-from mira_edge.serial_uart import get_default_port
+from mari_edge.mari_protocol import MARI_BROADCAST_ADDRESS, Frame, Header
+from mari_edge.model import EdgeEvent, GatewayInfo, MariGateway, MariNode
+from mari_edge.protocol import ProtocolPayloadParserException
+from mari_edge.serial_adapter import SerialAdapter
+from mari_edge.serial_uart import get_default_port
 
 
 @dataclass
-class MiraEdge:
-    cb_application: Callable[[EdgeEvent, MiraNode | Frame], None]
+class MariEdge:
+    cb_application: Callable[[EdgeEvent, MariNode | Frame], None]
     port: str | None = None
     baudrate: int = 1_000_000
-    gateway: MiraGateway = field(default_factory=MiraGateway)
+    gateway: MariGateway = field(default_factory=MariGateway)
     serial_interface: SerialAdapter | None = None
     started_ts: datetime = field(default_factory=datetime.now)
     last_received_serial_data: datetime = field(default_factory=datetime.now)
@@ -78,13 +78,13 @@ class MiraEdge:
 
     def send_frame(self, dst: int, payload: bytes):
         assert self.serial_interface is not None
-        mira_frame = Frame(Header(destination=dst), payload=payload)
+        mari_frame = Frame(Header(destination=dst), payload=payload)
         uart_frame_type = b"\x01"
-        uart_frame = uart_frame_type + mira_frame.to_bytes()
+        uart_frame = uart_frame_type + mari_frame.to_bytes()
         self.serial_interface.send_data(uart_frame)
         if node := self.gateway.get_node(dst):
-            node.register_sent_frame(mira_frame)
-        elif dst == MIRA_BROADCAST_ADDRESS:
+            node.register_sent_frame(mari_frame)
+        elif dst == MARI_BROADCAST_ADDRESS:
             for node in self.gateway.nodes:
-                node.register_sent_frame(mira_frame)
-        self.gateway.register_sent_frame(mira_frame)
+                node.register_sent_frame(mari_frame)
+        self.gateway.register_sent_frame(mari_frame)

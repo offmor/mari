@@ -2,22 +2,22 @@ import time
 
 import click
 
-from mira_edge.mira_edge import MiraEdge
-from mira_edge.mira_protocol import MIRA_BROADCAST_ADDRESS, Frame
-from mira_edge.model import EdgeEvent, MiraNode
-from mira_edge.serial_uart import get_default_port
-from mira_edge.tui import MiraEdgeTUI
+from mari_edge.mari_edge import MariEdge
+from mari_edge.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
+from mari_edge.model import EdgeEvent, MariNode
+from mari_edge.serial_uart import get_default_port
+from mari_edge.tui import MariEdgeTUI
 
 SERIAL_PORT_DEFAULT = get_default_port()
 
 
-def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
+def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     if event == EdgeEvent.NODE_JOINED:
-        assert isinstance(event_data, MiraNode)
+        assert isinstance(event_data, MariNode)
         # print(f"Node {event_data} joined")
         # print("#", end="", flush=True)
     elif event == EdgeEvent.NODE_LEFT:
-        assert isinstance(event_data, MiraNode)
+        assert isinstance(event_data, MariNode)
         # print(f"Node {event_data} left")
         # print("0", end="", flush=True)
     elif event == EdgeEvent.NODE_DATA:
@@ -34,20 +34,20 @@ def on_event(event: EdgeEvent, event_data: MiraNode | Frame):
     help="Serial port to use (e.g., /dev/ttyACM0)",
 )
 def main(port: str | None):
-    """Basic example of using MiraEdge to communicate with nodes."""
-    mira = MiraEdge(on_event, port)
-    tui = MiraEdgeTUI()
+    """Basic example of using MariEdge to communicate with nodes."""
+    mari = MariEdge(on_event, port)
+    tui = MariEdgeTUI()
 
     try:
         while True:
-            mira.gateway.update()
-            if len(mira.gateway.nodes) > 0:
-                mira.send_frame(dst=MIRA_BROADCAST_ADDRESS, payload=b"A" * 224)
-            # for node in mira.gateway.nodes:
+            mari.gateway.update()
+            if len(mari.gateway.nodes) > 0:
+                mari.send_frame(dst=MARI_BROADCAST_ADDRESS, payload=b"A" * 224)
+            # for node in mari.gateway.nodes:
             #     # print(f"Sending frame to 0x{node.address:016x}")
-            #     mira.send_frame(dst=node.address, payload=b"A" * 3)
+            #     mari.send_frame(dst=node.address, payload=b"A" * 3)
             time.sleep(0.3)
-            tui.render(mira)
+            tui.render(mari)
 
     except KeyboardInterrupt:
         print("\nInterrupted by user")

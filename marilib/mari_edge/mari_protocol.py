@@ -1,11 +1,11 @@
 import dataclasses
 from dataclasses import dataclass
 
-from mira_edge.protocol import Packet, PacketFieldMetadata, PacketType
+from mari_edge.protocol import Packet, PacketFieldMetadata, PacketType
 
-MIRA_PROTOCOL_VERSION = 2
-MIRA_BROADCAST_ADDRESS = 0xFFFFFFFFFFFFFFFF
-MIRA_NET_ID_DEFAULT = 0x0001
+MARI_PROTOCOL_VERSION = 2
+MARI_BROADCAST_ADDRESS = 0xFFFFFFFFFFFFFFFF
+MARI_NET_ID_DEFAULT = 0x0001
 
 
 @dataclass
@@ -39,10 +39,10 @@ class Header(Packet):
             PacketFieldMetadata(name="source", disp="src", length=8),
         ]
     )
-    version: int = MIRA_PROTOCOL_VERSION
+    version: int = MARI_PROTOCOL_VERSION
     type_: int = PacketType.DATA
-    network_id: int = MIRA_NET_ID_DEFAULT
-    destination: int = MIRA_BROADCAST_ADDRESS
+    network_id: int = MARI_NET_ID_DEFAULT
+    destination: int = MARI_BROADCAST_ADDRESS
     source: int = 0x0000000000000000
 
     def __repr__(self):
