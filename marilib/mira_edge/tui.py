@@ -17,7 +17,7 @@ class MiraEdgeTUI:
         self.live = Live(console=self.console, auto_refresh=False, transient=True)
         self.live.start()
         self.max_tables = max_tables
-        self.re_render_max_freq = re_render_max_freq # seconds
+        self.re_render_max_freq = re_render_max_freq  # seconds
         self.last_render_time = datetime.now()
 
     def get_max_rows(self) -> int:
@@ -35,7 +35,9 @@ class MiraEdgeTUI:
         return max(2, available_height)  # Minimum 2 rows to always show something
 
     def render(self, mira: MiraEdge):
-        if datetime.now() - self.last_render_time < timedelta(seconds=self.re_render_max_freq):
+        if datetime.now() - self.last_render_time < timedelta(
+            seconds=self.re_render_max_freq
+        ):
             return
         self.last_render_time = datetime.now()
 
