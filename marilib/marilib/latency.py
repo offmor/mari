@@ -58,16 +58,16 @@ class LatencyTester:
         if not frame.payload.startswith(LATENCY_PACKET_MAGIC):
             return  
         try:
-            # Unpack the original timestamp from the payload
+#Unpack the original timestamp from the payload
             original_ts = struct.unpack("<d", frame.payload[2:10])[0]
             rtt = time.time() - original_ts
 
             node = self.marilib.gateway.get_node(frame.header.source)
             if node:
-                # Update statistics for both the specific node and the whole gateway
+#Update statistics for both the specific node and the whole gateway
                 node.latency_stats.add_latency(rtt)
                 self.marilib.gateway.latency_stats.add_latency(rtt)
 
         except (struct.error, IndexError):
-            # Ignore packets that are too short or malformed
+#Ignore packets that are too short or malformed
             pass

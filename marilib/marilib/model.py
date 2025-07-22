@@ -8,7 +8,7 @@ from marilib.mari_protocol import Frame
 from marilib.protocol import Packet, PacketFieldMetadata
 
 SCHEDULES = {
-    # schedule_id: {name, max_nodes, d_down, sf_duration_ms}
+#schedule_id : {name, max_nodes, d_down, sf_duration_ms }
     0: {"name": "huge",   "max_nodes": 101, "d_down": 22, "sf_duration": 208.79},
     1: {"name": "big",    "max_nodes": 74,  "d_down": 16, "sf_duration": 153.92},
     2: {"name": "medium", "max_nodes": 49,  "d_down": 10, "sf_duration": 102.11},
@@ -110,7 +110,8 @@ class MariGateway:
         node = MariNode(a)
         self.nodes.append(node)
         return node
-    # The erroneous line "alised-for-lambda" that caused the error has been removed from right after this point.
+#The erroneous line "alised-for-lambda" that caused the error has been removed \
+    from right after this point.
     def remove_node(self, a: int) -> MariNode | None:
         if n := self.get_node(a): self.nodes.remove(n)
         return n
