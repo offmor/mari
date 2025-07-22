@@ -17,9 +17,7 @@ class MariLibTUI:
 
     def __init__(self, max_tables=3, re_render_max_freq=0.2):
         self.console = Console()
-        self.live = Live(
-            console=self.console, auto_refresh=False, transient=True
-        )
+        self.live = Live(console=self.console, auto_refresh=False, transient=True)
         self.live.start()
         self.max_tables = max_tables
         self.re_render_max_freq = re_render_max_freq
@@ -59,9 +57,7 @@ class MariLibTUI:
             f"since {mari.started_ts.strftime('%Y-%m-%d %H:%M:%S')}"
         )
         status.append("  |  ")
-        secs = int(
-            (datetime.now() - mari.last_received_serial_data).total_seconds()
-        )
+        secs = int((datetime.now() - mari.last_received_serial_data).total_seconds())
         status.append(
             f"last received: {secs}s ago",
             style="bold green" if secs <= 1 else "bold red",
@@ -100,8 +96,11 @@ class MariLibTUI:
     def create_nodes_table(self, nodes: list[MariNode], title="") -> Table:
         """Create a table displaying information about connected nodes."""
         table = Table(
-            show_header=True, header_style="bold cyan",
-            border_style="blue", padding=(0, 1), title=title
+            show_header=True,
+            header_style="bold cyan",
+            border_style="blue",
+            padding=(0, 1),
+            title=title,
         )
         table.add_column("Node Address", style="cyan")
         table.add_column("TX", justify="right")
@@ -114,7 +113,8 @@ class MariLibTUI:
         for node in nodes:
             lat_str = (
                 f"{node.latency_stats.avg_ms:.1f}"
-                if node.latency_stats.last_ms > 0 else "..."
+                if node.latency_stats.last_ms > 0
+                else "..."
             )
             table.add_row(
                 f"0x{node.address:016X}",
@@ -139,15 +139,11 @@ class MariLibTUI:
         current_table_nodes = []
         for i, node in enumerate(nodes_to_display):
             current_table_nodes.append(node)
-            if len(current_table_nodes) == max_rows or i == len(
-                nodes_to_display
-            ) - 1:
+            if len(current_table_nodes) == max_rows or i == len(nodes_to_display) - 1:
                 title = f"Nodes {i - len(current_table_nodes) + 2}-{i + 1}"
-                tables.append(
-                    self.create_nodes_table(current_table_nodes, title)
-                )
+                tables.append(self.create_nodes_table(current_table_nodes, title))
                 current_table_nodes = []
-                # MODIFICATION: Fixed E701 error by splitting the line.
+
                 if len(tables) >= self.max_tables:
                     break
         if len(tables) > 1:
@@ -157,18 +153,11 @@ class MariLibTUI:
         if remaining_nodes > 0:
             panel_content = Group(
                 content,
-                Text(
-                    f"\n(...and {remaining_nodes} more nodes)",
-                    style="bold yellow"
-                ),
+                Text(f"\n(...and {remaining_nodes} more nodes)", style="bold yellow"),
             )
         else:
             panel_content = content
-        return Panel(
-            panel_content,
-            title="[bold]Connected Nodes",
-            border_style="blue"
-        )
+        return Panel(panel_content, title="[bold]Connected Nodes", border_style="blue")
 
     def close(self):
         """Clean up the live display."""

@@ -5,13 +5,18 @@ from typing import Callable
 
 from marilib.latency import LATENCY_PACKET_MAGIC
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame, Header
-from marilib.model import (EdgeEvent, GatewayInfo, MariGateway, MariNode,
-                           SCHEDULES)
+from marilib.model import (
+    EdgeEvent,
+    GatewayInfo,
+    MariGateway,
+    MariNode,
+    SCHEDULES,
+)
 from marilib.protocol import ProtocolPayloadParserException
 from marilib.serial_adapter import SerialAdapter
 from marilib.serial_uart import get_default_port
 
-LOAD_PACKET_PAYLOAD = b'L'
+LOAD_PACKET_PAYLOAD = b"L"
 
 
 @dataclass
@@ -24,9 +29,7 @@ class MariLib:
     gateway: MariGateway = field(default_factory=MariGateway)
     serial_interface: SerialAdapter | None = None
     started_ts: datetime = field(default_factory=datetime.now)
-    last_received_serial_data: datetime = field(
-        default_factory=datetime.now
-    )
+    last_received_serial_data: datetime = field(default_factory=datetime.now)
     test_schedule_id: int | None = None
     test_schedule_name: str | None = None
     test_rate: int = 0
@@ -67,14 +70,10 @@ class MariLib:
                 self.gateway.add_node(int.from_bytes(data[1:9], "little"))
                 self.cb_application(EdgeEvent.NODE_JOINED, None)
             elif event_type == EdgeEvent.NODE_LEFT:
-                if n := self.gateway.remove_node(
-                    int.from_bytes(data[1:9], "little")
-                ):
+                if n := self.gateway.remove_node(int.from_bytes(data[1:9], "little")):
                     self.cb_application(EdgeEvent.NODE_LEFT, n)
             elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
-                self.gateway.update_node_liveness(
-                    int.from_bytes(data[1:9], "little")
-                )
+                self.gateway.update_node_liveness(int.from_bytes(data[1:9], "little"))
             elif event_type == EdgeEvent.GATEWAY_INFO:
                 try:
                     self.gateway.set_info(GatewayInfo().from_bytes(data[1:]))
@@ -100,7 +99,7 @@ class MariLib:
         assert self.serial_interface is not None
 
         is_latency = payload.startswith(LATENCY_PACKET_MAGIC)
-        is_load = (payload == LOAD_PACKET_PAYLOAD)
+        is_load = payload == LOAD_PACKET_PAYLOAD
 
         with self.lock:
             if not is_latency and not is_load:

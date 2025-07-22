@@ -10,17 +10,17 @@ from marilib.model import EdgeEvent, MariNode, SCHEDULES
 from marilib.serial_uart import get_default_port
 from marilib.tui import MariLibTUI
 
-# Define payloads for different traffic types
 LOAD_PACKET_PAYLOAD = b"L"
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
-# Create a mapping from schedule name (e.g., "big") to its ID (e.g., 1)
 SCHEDULE_NAME_TO_ID = {
     schedule["name"]: schedule_id for schedule_id, schedule in SCHEDULES.items()
 }
 
 
 class LoadTester(threading.Thread):
+    """Generates background load traffic that is ignored by statistics."""
+
     def __init__(
         self,
         mari: MariLib,
@@ -44,7 +44,6 @@ class LoadTester(threading.Thread):
         self.mari.test_rate = int(max_rate)
         packets_per_second = max_rate * (self.load / 100.0)
         delay = 1.0 / packets_per_second if packets_per_second > 0 else float("inf")
-
         while not self._stop_event.is_set():
             with self.mari.lock:
                 nodes_exist = bool(self.mari.gateway.nodes)
@@ -55,13 +54,14 @@ class LoadTester(threading.Thread):
 
 
 SERIAL_PORT_DEFAULT = get_default_port()
-latency_tester = None  # type: LatencyTester | None
+latency_tester: LatencyTester | None = None
 
 
 def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     """Directs latency data to the LatencyTester instance."""
-    if event == EdgeEvent.LATENCY_DATA and latency_tester:
-        latency_tester.handle_response(event_data)
+    if event == EdgeEvent.LATENCY_DATA:
+        if latency_tester:
+            latency_tester.handle_response(event_data)
 
 
 @click.command()
@@ -93,6 +93,7 @@ def main(port: str | None, schedule: str, load: int):
         return
 
     mari = MariLib(on_event, port)
+
     schedule_id = SCHEDULE_NAME_TO_ID[schedule.lower()]
     mari.test_schedule_id = schedule_id
     mari.test_schedule_name = schedule.lower()
@@ -110,7 +111,7 @@ def main(port: str | None, schedule: str, load: int):
         load_tester.start()
 
     try:
-        normal_traffic_interval = 0.5  # seconds
+        normal_traffic_interval = 0.5
         last_normal_send_time = time.monotonic()
 
         while not stop_event.is_set():
