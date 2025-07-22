@@ -11,22 +11,33 @@ from rich.text import Text
 from marilib.marilib import MariLib
 from marilib.model import MariNode
 
+
 class MariLibTUI:
+    """A Text-based User Interface for MariLib."""
 
     def __init__(self, max_tables=3, re_render_max_freq=0.2):
         self.console = Console()
-        self.live = Live(console=self.console, auto_refresh=False, transient=True)
+        self.live = Live(
+            console=self.console, auto_refresh=False, transient=True
+        )
         self.live.start()
-        self.max_tables, self.re_render_max_freq = max_tables, re_render_max_freq
+        self.max_tables = max_tables
+        self.re_render_max_freq = re_render_max_freq
         self.last_render_time = datetime.now()
 
     def get_max_rows(self) -> int:
+        """Calculate maximum rows based on terminal height."""
         terminal_height = self.console.height
         available_height = terminal_height - 10 - 2 - 2 - 1 - 2
         return max(2, available_height)
 
     def render(self, mari: MariLib):
-        if datetime.now() - self.last_render_time < timedelta(seconds=self.re_render_max_freq): return
+        """Render the TUI layout."""
+        # MODIFICATION: Fixed E701 error by splitting the line.
+        if datetime.now() - self.last_render_time < timedelta(
+            seconds=self.re_render_max_freq
+        ):
+            return
         self.last_render_time = datetime.now()
         layout = Layout()
         layout.split(
@@ -36,41 +47,62 @@ class MariLibTUI:
         self.live.update(layout, refresh=True)
 
     def create_header_panel(self, mari: MariLib) -> Panel:
+        """Create the header panel with gateway and network stats."""
         status = Text()
         status.append("MariLib Edge is ", style="bold")
-        status.append("connected" if mari.serial_connected else "disconnected", style="bold green" if mari.serial_connected else "bold red")
-        status.append(f" via {mari.port} at {mari.baudrate} baud since {mari.started_ts.strftime('%Y-%m-%d %H:%M:%S')}")
+        status.append(
+            "connected" if mari.serial_connected else "disconnected",
+            style="bold green" if mari.serial_connected else "bold red",
+        )
+        status.append(
+            f" via {mari.port} at {mari.baudrate} baud "
+            f"since {mari.started_ts.strftime('%Y-%m-%d %H:%M:%S')}"
+        )
         status.append("  |  ")
-        secs = int((datetime.now() - mari.last_received_serial_data).total_seconds())
-        status.append(f"last received: {secs}s ago", style="bold green" if secs <= 1 else "bold red")
-        
+        secs = int(
+            (datetime.now() - mari.last_received_serial_data).total_seconds()
+        )
+        status.append(
+            f"last received: {secs}s ago",
+            style="bold green" if secs <= 1 else "bold red",
+        )
+
         status.append("\n\nGateway: ", style="bold cyan")
         status.append(f"0x{mari.gateway.info.address:016X}  |  ")
         status.append("Network ID: ", style="bold cyan")
         status.append(f"{mari.gateway.info.network_id}  |  ")
         status.append("Schedule ID: ", style="bold cyan")
         status.append(f"{mari.gateway.info.schedule_id}")
-        
+
         if mari.test_load > 0 and mari.test_rate > 0:
             status.append("  |  ")
-            status.append(f"Test ({mari.test_schedule_name}): ", style="bold yellow")
+            status.append(f"Test ({mari.test_schedule_name}): ", "bold yellow")
             status.append(f"{mari.test_load}% of {mari.test_rate} pps")
 
         if mari.gateway.latency_stats.last_ms > 0:
             status.append("\n\nLatency: ", style="bold cyan")
             lat = mari.gateway.latency_stats
-            status.append(f"Last: {lat.last_ms:.1f}ms | Avg: {lat.avg_ms:.1f}ms | Min: {lat.min_ms:.1f}ms | Max: {lat.max_ms:.1f}ms")
+            status.append(
+                f"Last: {lat.last_ms:.1f}ms | Avg: {lat.avg_ms:.1f}ms | "
+                f"Min: {lat.min_ms:.1f}ms | Max: {lat.max_ms:.1f}ms"
+            )
 
         status.append("\n\nStats:    ", style="bold yellow")
         stats = mari.gateway.stats
         status.append(f"Nodes: {len(mari.gateway.nodes)}  |  ")
-        status.append(f"Frames TX: {stats.sent_count()}  |  Frames RX: {stats.received_count()} |  ")
-        status.append(f"TX/s: {stats.sent_count(1)}  |  RX/s: {stats.received_count(1)}")
+        status.append(f"Frames TX: {stats.sent_count()}  |  ")
+        status.append(f"Frames RX: {stats.received_count()} |  ")
+        status.append(f"TX/s: {stats.sent_count(1)}  |  ")
+        status.append(f"RX/s: {stats.received_count(1)}")
 
         return Panel(status, title="[bold]MariLib Status", border_style="blue")
-    
+
     def create_nodes_table(self, nodes: list[MariNode], title="") -> Table:
-        table = Table(show_header=True, header_style="bold cyan", border_style="blue", padding=(0, 1), title=title)
+        """Create a table displaying information about connected nodes."""
+        table = Table(
+            show_header=True, header_style="bold cyan",
+            border_style="blue", padding=(0, 1), title=title
+        )
         table.add_column("Node Address", style="cyan")
         table.add_column("TX", justify="right")
         table.add_column("TX/s", justify="right")
@@ -80,16 +112,24 @@ class MariLibTUI:
         table.add_column("RSSI", justify="right")
         table.add_column("Latency (ms)", justify="right")
         for node in nodes:
-            latency_str = f"{node.latency_stats.avg_ms:.1f}" if node.latency_stats.last_ms > 0 else "..."
+            lat_str = (
+                f"{node.latency_stats.avg_ms:.1f}"
+                if node.latency_stats.last_ms > 0 else "..."
+            )
             table.add_row(
                 f"0x{node.address:016X}",
-                str(node.stats.sent_count()), str(node.stats.sent_count(1)),
-                str(node.stats.received_count()), str(node.stats.received_count(1)),
-                f"{node.stats.success_rate(30):>4.0%}", f"{node.stats.received_rssi_dbm(5)}",
-                latency_str,
+                str(node.stats.sent_count()),
+                str(node.stats.sent_count(1)),
+                str(node.stats.received_count()),
+                str(node.stats.received_count(1)),
+                f"{node.stats.success_rate(30):>4.0%}",
+                f"{node.stats.received_rssi_dbm(5)}",
+                lat_str,
             )
         return table
+
     def create_nodes_panel(self, mari: MariLib) -> Panel:
+        """Create the panel that contains the nodes table."""
         nodes = mari.gateway.nodes
         max_rows = self.get_max_rows()
         max_displayable_nodes = self.max_tables * max_rows
@@ -99,14 +139,38 @@ class MariLibTUI:
         current_table_nodes = []
         for i, node in enumerate(nodes_to_display):
             current_table_nodes.append(node)
-            if len(current_table_nodes) == max_rows or i == len(nodes_to_display) - 1:
+            if len(current_table_nodes) == max_rows or i == len(
+                nodes_to_display
+            ) - 1:
                 title = f"Nodes {i - len(current_table_nodes) + 2}-{i + 1}"
-                tables.append(self.create_nodes_table(current_table_nodes, title))
+                tables.append(
+                    self.create_nodes_table(current_table_nodes, title)
+                )
                 current_table_nodes = []
-                if len(tables) >= self.max_tables: break
-        content = Columns(tables, equal=True, expand=True) if len(tables) > 1 else (tables[0] if tables else Table())
-        panel_content = Group(content, Text(f"\n(...and {remaining_nodes} more nodes)", style="bold yellow")) if remaining_nodes > 0 else content
-        return Panel(panel_content, title="[bold]Connected Nodes", border_style="blue")
+                # MODIFICATION: Fixed E701 error by splitting the line.
+                if len(tables) >= self.max_tables:
+                    break
+        if len(tables) > 1:
+            content = Columns(tables, equal=True, expand=True)
+        else:
+            content = tables[0] if tables else Table()
+        if remaining_nodes > 0:
+            panel_content = Group(
+                content,
+                Text(
+                    f"\n(...and {remaining_nodes} more nodes)",
+                    style="bold yellow"
+                ),
+            )
+        else:
+            panel_content = content
+        return Panel(
+            panel_content,
+            title="[bold]Connected Nodes",
+            border_style="blue"
+        )
+
     def close(self):
+        """Clean up the live display."""
         self.live.stop()
         print("")
