@@ -144,10 +144,10 @@ def hdlc_decode(frame: bytes) -> bytes:
     bytearray(b'')
     >>> hdlc_decode(b"~test\\x42\\x42~")
     Traceback (most recent call last):
-    dotbot.hdlc.HDLCDecodeException: Invalid FCS
+    marilib.serial_hdlc.HDLCDecodeException: Invalid FCS
     >>> hdlc_decode(b"~\\x00~")
     Traceback (most recent call last):
-    dotbot.hdlc.HDLCDecodeException: Invalid payload
+    marilib.serial_hdlc.HDLCDecodeException: Invalid payload
     """
     output = bytearray()
     fcs = HDLC_FCS_INIT
