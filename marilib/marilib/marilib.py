@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable
 
-from marilib.latency import LATENCY_PACKET_MAGIC
+from marilib.latency import LATENCY_PACKET_MAGIC, LatencyTester
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame, Header
 from marilib.model import (
     EdgeEvent,
@@ -35,6 +35,7 @@ class MariLib:
     test_rate: int = 0
     test_load: int = 0
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
+    latency_tester: LatencyTester | None = None
 
     def __post_init__(self):
         if self.port is None:
@@ -53,10 +54,25 @@ class MariLib:
             return 0.0
         return d_down / (sf_duration_ms / 1000.0)
 
+    def latency_test_enable(self, enable: bool = True):
+        """Enables or disables the latency test thread."""
+        if enable and self.latency_tester is None:
+            self.latency_tester = LatencyTester(self)
+            self.latency_tester.start()
+        elif not enable and self.latency_tester is not None:
+            self.latency_tester.stop()
+            self.latency_tester = None
+
     @property
     def serial_connected(self) -> bool:
         """Return whether the serial interface is connected."""
         return self.serial_interface is not None
+
+    def _is_test_packet(self, payload: bytes) -> bool:
+        """Checks if a packet is for testing and should be ignored by stats."""
+        is_latency = payload.startswith(LATENCY_PACKET_MAGIC)
+        is_load = payload == LOAD_PACKET_PAYLOAD
+        return is_latency or is_load
 
     def on_data_received(self, data: bytes):
         """Handle incoming data from the serial interface."""
@@ -85,11 +101,12 @@ class MariLib:
                     self.gateway.update_node_liveness(frame.header.source)
                     payload = frame.payload
                     if payload.startswith(LATENCY_PACKET_MAGIC):
-                        self.cb_application(EdgeEvent.LATENCY_DATA, frame)
-                        return
-                    if payload == LOAD_PACKET_PAYLOAD:
-                        return
-                    self.gateway.register_received_frame(frame)
+                        if self.latency_tester:
+                            self.latency_tester.handle_response(frame)
+
+                    if not self._is_test_packet(payload):
+                        self.gateway.register_received_frame(frame)
+
                     self.cb_application(EdgeEvent.NODE_DATA, frame)
                 except (ValueError, ProtocolPayloadParserException):
                     pass
@@ -98,11 +115,8 @@ class MariLib:
         """Send a frame to a destination."""
         assert self.serial_interface is not None
 
-        is_latency = payload.startswith(LATENCY_PACKET_MAGIC)
-        is_load = payload == LOAD_PACKET_PAYLOAD
-
         with self.lock:
-            if not is_latency and not is_load:
+            if not self._is_test_packet(payload):
                 frame = Frame(Header(destination=dst), payload=payload)
                 if dst == MARI_BROADCAST_ADDRESS:
                     for n in self.gateway.nodes:

@@ -31,7 +31,6 @@ class MariLibTUI:
 
     def render(self, mari: MariLib):
         """Render the TUI layout."""
-        # MODIFICATION: Fixed E701 error by splitting the line.
         if datetime.now() - self.last_render_time < timedelta(
             seconds=self.re_render_max_freq
         ):
