@@ -111,15 +111,15 @@ class MariLib:
     def send_frame(self, dst: int, payload: bytes):
         assert self.serial_interface is not None
 
+        mari_frame = Frame(Header(destination=dst), payload=payload)
         with self.lock:
+            # Only register statistics for normal data packets, not for test packets.
             if not self._is_test_packet(payload):
-                frame = Frame(Header(destination=dst), payload=payload)
                 if dst == MARI_BROADCAST_ADDRESS:
                     for n in self.gateway.nodes:
-                        n.register_sent_frame(frame)
+                        n.register_sent_frame(mari_frame)
                 elif n := self.gateway.get_node(dst):
-                    n.register_sent_frame(frame)
-                self.gateway.register_sent_frame(frame)
+                    n.register_sent_frame(mari_frame)
+                self.gateway.register_sent_frame(mari_frame)
 
-        frame_to_send = Frame(Header(destination=dst), payload=payload)
-        self.serial_interface.send_data(b"\x01" + frame_to_send.to_bytes())
+        self.serial_interface.send_data(b"\x01" + mari_frame.to_bytes())
