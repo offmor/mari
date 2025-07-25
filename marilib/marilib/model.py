@@ -1,3 +1,5 @@
+import statistics
+from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import IntEnum
@@ -5,10 +7,25 @@ from enum import IntEnum
 from marilib.mari_protocol import Frame
 from marilib.protocol import Packet, PacketFieldMetadata
 
+SCHEDULES = {
+    # schedule_id: {name, max_nodes, d_down, sf_duration_ms}
+    0: {"name": "huge", "max_nodes": 101, "d_down": 22, "sf_duration": 223.31},
+    1: {"name": "big", "max_nodes": 74, "d_down": 16, "sf_duration": 164.63},
+    2: {"name": "medium", "max_nodes": 49, "d_down": 10, "sf_duration": 109.21},
+    3: {"name": "small", "max_nodes": 29, "d_down": 6, "sf_duration": 66.83},
+    4: {"name": "tiny", "max_nodes": 11, "d_down": 2, "sf_duration": 27.71},
+}
+
+
+@dataclass
+class TestState:
+    schedule_id: int | None = None
+    schedule_name: str | None = None
+    rate: int = 0
+    load: int = 0
+
 
 class EdgeEvent(IntEnum):
-    """Types of UART packet."""
-
     NODE_JOINED = 1
     NODE_LEFT = 2
     NODE_DATA = 3
@@ -23,6 +40,30 @@ class FrameLogEntry:
 
 
 @dataclass
+class LatencyStats:
+    latencies: deque = field(default_factory=lambda: deque(maxlen=50))
+
+    def add_latency(self, rtt_seconds: float):
+        self.latencies.append(rtt_seconds * 1000)
+
+    @property
+    def last_ms(self) -> float:
+        return self.latencies[-1] if self.latencies else 0.0
+
+    @property
+    def avg_ms(self) -> float:
+        return statistics.mean(self.latencies) if self.latencies else 0.0
+
+    @property
+    def min_ms(self) -> float:
+        return min(self.latencies) if self.latencies else 0.0
+
+    @property
+    def max_ms(self) -> float:
+        return max(self.latencies) if self.latencies else 0.0
+
+
+@dataclass
 class FrameStats:
     sent: list[FrameLogEntry] = field(default_factory=list)
     received: list[FrameLogEntry] = field(default_factory=list)
@@ -30,58 +71,35 @@ class FrameStats:
     def sent_count(self, window_secs: int = 0) -> int:
         if window_secs == 0:
             return len(self.sent)
-        else:
-            # return the number of sent frames in the last window_secs seconds
-            now = datetime.now()
-            return len(
-                [
-                    entry
-                    for entry in self.sent
-                    if now - entry.ts < timedelta(seconds=window_secs)
-                ]
-            )
+        n = datetime.now()
+        return len([e for e in self.sent if n - e.ts < timedelta(seconds=window_secs)])
 
     def received_count(self, window_secs: int = 0) -> int:
         if window_secs == 0:
             return len(self.received)
-        else:
-            # return the number of received frames in the last window_secs seconds
-            now = datetime.now()
-            return len(
-                [
-                    entry
-                    for entry in self.received
-                    if now - entry.ts < timedelta(seconds=window_secs)
-                ]
-            )
+        n = datetime.now()
+        return len(
+            [e for e in self.received if n - e.ts < timedelta(seconds=window_secs)]
+        )
 
     def success_rate(self, window_secs: int = 0) -> float:
-        if self.sent_count() == 0:
-            return 0
-        rate = None
-        if window_secs == 0:
-            rate = self.received_count() / self.sent_count()
-        else:
-            rate = self.received_count(window_secs) / self.sent_count(window_secs)
-        # this is a hack, because of the way we count, sometimes
-        # received_count is greater than sent_count so we cap the rate at 1
-        return min(rate, 1)
+        s = self.sent_count(window_secs)
+        if s == 0:
+            return 1.0
+        return min(self.received_count(window_secs) / s, 1.0)
 
     def received_rssi_dbm(self, window_secs: int = 0) -> float:
-        if len(self.received) == 0:
+        if not self.received:
             return 0
         if window_secs == 0:
-            # get the last rssi value
-            rssi = self.received[-1].frame.stats.rssi_dbm
-        else:
-            now = datetime.now()
-            dbms = [
-                entry.frame.stats.rssi_dbm
-                for entry in self.received
-                if now - entry.ts < timedelta(seconds=window_secs)
-            ]
-            rssi = sum(dbms) / len(dbms) if dbms else 0
-        return int(rssi)
+            return int(self.received[-1].frame.stats.rssi_dbm)
+        n = datetime.now()
+        d = [
+            e.frame.stats.rssi_dbm
+            for e in self.received
+            if n - e.ts < timedelta(seconds=window_secs)
+        ]
+        return int(sum(d) / len(d) if d else 0)
 
 
 @dataclass
@@ -89,14 +107,11 @@ class MariNode:
     address: int
     last_seen: datetime = field(default_factory=lambda: datetime.now())
     stats: FrameStats = field(default_factory=FrameStats)
+    latency_stats: LatencyStats = field(default_factory=LatencyStats)
 
     @property
     def is_alive(self) -> bool:
         return datetime.now() - self.last_seen < timedelta(seconds=10)
-
-    @property
-    def address_bytes(self) -> bytes:
-        return self.address.to_bytes(8, "little")
 
     def register_received_frame(self, frame: Frame):
         self.stats.received.append(FrameLogEntry(frame=frame))
@@ -104,20 +119,16 @@ class MariNode:
     def register_sent_frame(self, frame: Frame):
         self.stats.sent.append(FrameLogEntry(frame=frame))
 
-    def __repr__(self):
-        return f"MariNode(address=0x{self.address_bytes.hex()}, last_seen={self.last_seen})"
-
 
 @dataclass
 class GatewayInfo(Packet):
     metadata: list[PacketFieldMetadata] = field(
         default_factory=lambda: [
-            PacketFieldMetadata(name="address", disp="addr", length=8),
-            PacketFieldMetadata(name="network_id", disp="net", length=2),
-            PacketFieldMetadata(name="schedule_id", disp="sch", length=1),
+            PacketFieldMetadata(name="address", length=8),
+            PacketFieldMetadata(name="network_id", length=2),
+            PacketFieldMetadata(name="schedule_id", length=1),
         ]
     )
-
     address: int = 0
     network_id: int = 0
     schedule_id: int = 0
@@ -128,45 +139,37 @@ class MariGateway:
     info: GatewayInfo = field(default_factory=GatewayInfo)
     nodes: list[MariNode] = field(default_factory=list)
     stats: FrameStats = field(default_factory=FrameStats)
-
-    def __repr__(self):
-        return f"MariGateway(info={self.info}, number of nodes: {len(self.nodes)}"
+    latency_stats: LatencyStats = field(default_factory=LatencyStats)
 
     def update(self):
-        # remove nodes that have not been seen in the last 2 second
-        self.nodes = [
-            node
-            for node in self.nodes
-            if datetime.now() - node.last_seen < timedelta(seconds=2)
-        ]
+        self.nodes = [n for n in self.nodes if n.is_alive]
 
     def set_info(self, info: GatewayInfo):
         self.info = info
 
-    def get_node(self, address: int) -> MariNode | None:
-        return next((node for node in self.nodes if node.address == address), None)
+    def get_node(self, a: int) -> MariNode | None:
+        return next((n for n in self.nodes if n.address == a), None)
 
-    def add_node(self, address: int) -> MariNode:
-        node = self.get_node(address)
-        if node:
+    def add_node(self, a: int) -> MariNode:
+        if node := self.get_node(a):
             node.last_seen = datetime.now()
-        else:
-            node = MariNode(address)
-            self.nodes.append(node)
+            return node
+        node = MariNode(a)
+        self.nodes.append(node)
         return node
 
-    def remove_node(self, address: int) -> MariNode | None:
-        node = self.get_node(address)
-        if node:
-            self.nodes.remove(node)
-            return node
-        return None
+    def remove_node(self, a: int) -> MariNode | None:
+        if n := self.get_node(a):
+            self.nodes.remove(n)
+        return n
+
+    def update_node_liveness(self, a: int):
+        if n := self.get_node(a):
+            n.last_seen = datetime.now()
 
     def register_received_frame(self, frame: Frame):
-        node = self.get_node(frame.header.source)
-        if node:
-            node.last_seen = datetime.now()
-            node.register_received_frame(frame)
+        if n := self.get_node(frame.header.source):
+            n.register_received_frame(frame)
             self.stats.received.append(FrameLogEntry(frame=frame))
 
     def register_sent_frame(self, frame: Frame):
