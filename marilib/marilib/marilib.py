@@ -30,10 +30,6 @@ class MariLib:
     serial_interface: SerialAdapter | None = None
     started_ts: datetime = field(default_factory=datetime.now)
     last_received_serial_data: datetime = field(default_factory=datetime.now)
-    test_schedule_id: int | None = None
-    test_schedule_name: str | None = None
-    test_rate: int = 0
-    test_load: int = 0
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     latency_tester: LatencyTester | None = None
 
@@ -54,18 +50,18 @@ class MariLib:
             return 0.0
         return d_down / (sf_duration_ms / 1000.0)
 
-    def latency_test_enable(self, enable: bool = True):
-        """Enables or disables the latency test thread."""
-        if enable and self.latency_tester is None:
+    def latency_test_enable(self):
+        if self.latency_tester is None:
             self.latency_tester = LatencyTester(self)
             self.latency_tester.start()
-        elif not enable and self.latency_tester is not None:
+
+    def latency_test_disable(self):
+        if self.latency_tester is not None:
             self.latency_tester.stop()
             self.latency_tester = None
 
     @property
     def serial_connected(self) -> bool:
-        """Return whether the serial interface is connected."""
         return self.serial_interface is not None
 
     def _is_test_packet(self, payload: bytes) -> bool:
@@ -75,7 +71,6 @@ class MariLib:
         return is_latency or is_load
 
     def on_data_received(self, data: bytes):
-        """Handle incoming data from the serial interface."""
         with self.lock:
             if len(data) < 1:
                 return
@@ -100,6 +95,7 @@ class MariLib:
                     frame = Frame().from_bytes(data[1:])
                     self.gateway.update_node_liveness(frame.header.source)
                     payload = frame.payload
+
                     if payload.startswith(LATENCY_PACKET_MAGIC):
                         if self.latency_tester:
                             self.latency_tester.handle_response(frame)
@@ -108,11 +104,11 @@ class MariLib:
                         self.gateway.register_received_frame(frame)
 
                     self.cb_application(EdgeEvent.NODE_DATA, frame)
+
                 except (ValueError, ProtocolPayloadParserException):
                     pass
 
     def send_frame(self, dst: int, payload: bytes):
-        """Send a frame to a destination."""
         assert self.serial_interface is not None
 
         with self.lock:

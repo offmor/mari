@@ -5,7 +5,7 @@ import time
 import click
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
 from marilib.marilib import MariLib
-from marilib.model import EdgeEvent, MariNode, SCHEDULES
+from marilib.model import EdgeEvent, MariNode, SCHEDULES, TestState
 from marilib.serial_uart import get_default_port
 from marilib.tui import MariLibTUI
 
@@ -21,25 +21,25 @@ class LoadTester(threading.Thread):
     def __init__(
         self,
         mari: MariLib,
-        schedule_id: int,
-        load: int,
+        test_state: TestState,
         stop_event: threading.Event,
     ):
         super().__init__(daemon=True)
         self.mari = mari
-        self.schedule_id = schedule_id
-        self.load = load
+        self.test_state = test_state
         self._stop_event = stop_event
 
     def run(self):
-        if self.load == 0:
+        if self.test_state.load == 0:
             return
-        max_rate = self.mari.get_max_downlink_rate(self.schedule_id)
+        max_rate = self.mari.get_max_downlink_rate(self.test_state.schedule_id)
         if max_rate == 0:
-            sys.stderr.write(f"Error: Invalid schedule_id '{self.schedule_id}'.\n")
+            sys.stderr.write(
+                f"Error: Invalid schedule_id '{self.test_state.schedule_id}'.\n"
+            )
             return
-        self.mari.test_rate = int(max_rate)
-        packets_per_second = max_rate * (self.load / 100.0)
+        self.test_state.rate = int(max_rate)
+        packets_per_second = max_rate * (self.test_state.load / 100.0)
         delay = 1.0 / packets_per_second if packets_per_second > 0 else float("inf")
         while not self._stop_event.is_set():
             with self.mari.lock:
@@ -86,16 +86,18 @@ def main(port: str | None, schedule: str, load: int):
     mari = MariLib(on_event, port)
 
     schedule_id = SCHEDULE_NAME_TO_ID[schedule.lower()]
-    mari.test_schedule_id = schedule_id
-    mari.test_schedule_name = schedule.lower()
-    mari.test_load = load
+    test_state = TestState(
+        schedule_id=schedule_id,
+        schedule_name=schedule.lower(),
+        load=load,
+    )
 
-    tui = MariLibTUI()
+    tui = MariLibTUI(test_state=test_state)
     stop_event = threading.Event()
 
-    mari.latency_test_enable(True)
+    mari.latency_test_enable()
 
-    load_tester = LoadTester(mari, schedule_id, load, stop_event)
+    load_tester = LoadTester(mari, test_state, stop_event)
     if load > 0:
         load_tester.start()
 
@@ -122,7 +124,7 @@ def main(port: str | None, schedule: str, load: int):
         pass
     finally:
         stop_event.set()
-        mari.latency_test_enable(False)  # Stop the latency tester
+        mari.latency_test_disable()
         if load_tester.is_alive():
             load_tester.join()
         tui.close()

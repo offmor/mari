@@ -17,9 +17,15 @@ SCHEDULES = {
 }
 
 
-class EdgeEvent(IntEnum):
-    """Defines the types of events sent from the gateway over UART."""
+@dataclass
+class TestState:
+    schedule_id: int | None = None
+    schedule_name: str | None = None
+    rate: int = 0
+    load: int = 0
 
+
+class EdgeEvent(IntEnum):
     NODE_JOINED = 1
     NODE_LEFT = 2
     NODE_DATA = 3

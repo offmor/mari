@@ -9,19 +9,25 @@ from rich.table import Table
 from rich.text import Text
 
 from marilib.marilib import MariLib
-from marilib.model import MariNode
+from marilib.model import MariNode, TestState
 
 
 class MariLibTUI:
     """A Text-based User Interface for MariLib."""
 
-    def __init__(self, max_tables=3, re_render_max_freq=0.2):
+    def __init__(
+        self,
+        max_tables=3,
+        re_render_max_freq=0.2,
+        test_state: TestState | None = None,
+    ):
         self.console = Console()
         self.live = Live(console=self.console, auto_refresh=False, transient=True)
         self.live.start()
         self.max_tables = max_tables
         self.re_render_max_freq = re_render_max_freq
         self.last_render_time = datetime.now()
+        self.test_state = test_state
 
     def get_max_rows(self) -> int:
         """Calculate maximum rows based on terminal height."""
@@ -69,10 +75,13 @@ class MariLibTUI:
         status.append("Schedule ID: ", style="bold cyan")
         status.append(f"{mari.gateway.info.schedule_id}")
 
-        if mari.test_load > 0 and mari.test_rate > 0:
+        if self.test_state and self.test_state.load > 0 and self.test_state.rate > 0:
             status.append("  |  ")
-            status.append(f"Test ({mari.test_schedule_name}): ", "bold yellow")
-            status.append(f"{mari.test_load}% of {mari.test_rate} pps")
+            status.append(
+                f"Test ({self.test_state.schedule_name}): ",
+                style="bold yellow",
+            )
+            status.append(f"{self.test_state.load}% of {self.test_state.rate} pps")
 
         if mari.gateway.latency_stats.last_ms > 0:
             status.append("\n\nLatency: ", style="bold cyan")
@@ -142,7 +151,6 @@ class MariLibTUI:
                 title = f"Nodes {i - len(current_table_nodes) + 2}-{i + 1}"
                 tables.append(self.create_nodes_table(current_table_nodes, title))
                 current_table_nodes = []
-
                 if len(tables) >= self.max_tables:
                     break
         if len(tables) > 1:
@@ -152,11 +160,18 @@ class MariLibTUI:
         if remaining_nodes > 0:
             panel_content = Group(
                 content,
-                Text(f"\n(...and {remaining_nodes} more nodes)", style="bold yellow"),
+                Text(
+                    f"\n(...and {remaining_nodes} more nodes)",
+                    style="bold yellow",
+                ),
             )
         else:
             panel_content = content
-        return Panel(panel_content, title="[bold]Connected Nodes", border_style="blue")
+        return Panel(
+            panel_content,
+            title="[bold]Connected Nodes",
+            border_style="blue",
+        )
 
     def close(self):
         """Clean up the live display."""
