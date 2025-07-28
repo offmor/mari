@@ -3,6 +3,7 @@ import threading
 import time
 
 import click
+from marilib.logger import MetricsLogger
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
 from marilib.marilib import MariLib
 from marilib.model import EdgeEvent, MariNode, SCHEDULES, TestState
@@ -78,12 +79,20 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     show_default=True,
     help="Load percentage to apply (0–100)",
 )
-def main(port: str | None, schedule: str, load: int):
+@click.option(
+    "--log-dir",
+    default="logs_latency",
+    show_default=True,
+    help="Directory to save metric log files.",
+    type=click.Path(),
+)
+def main(port: str | None, schedule: str, load: int, log_dir: str):
     if not (0 <= load <= 100):
         sys.stderr.write("Error: --load must be between 0 and 100.\n")
         return
 
     mari = MariLib(on_event, port)
+    logger = MetricsLogger(log_dir_base=log_dir)
 
     schedule_id = SCHEDULE_NAME_TO_ID[schedule.lower()]
     test_state = TestState(
@@ -108,6 +117,13 @@ def main(port: str | None, schedule: str, load: int):
         while not stop_event.is_set():
             with mari.lock:
                 mari.gateway.update()
+
+                if logger.active:
+                    logger.log_gateway_metrics(mari.gateway)
+                    logger.log_all_nodes_metrics(
+                        list(mari.gateway.node_registry.values())
+                    )
+
                 tui.render(mari)
 
             current_time = time.monotonic()
@@ -128,6 +144,7 @@ def main(port: str | None, schedule: str, load: int):
         if load_tester.is_alive():
             load_tester.join()
         tui.close()
+        logger.close()
 
 
 if __name__ == "__main__":

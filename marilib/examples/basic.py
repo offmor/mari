@@ -1,6 +1,7 @@
 import time
 
 import click
+from marilib.logger import MetricsLogger
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
 from marilib.marilib import MariLib
 from marilib.model import EdgeEvent, MariNode
@@ -35,15 +36,29 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     show_default=True,
     help="Serial port to use (e.g., /dev/ttyACM0)",
 )
-def main(port: str | None):
+@click.option(
+    "--log-dir",
+    default="logs",
+    show_default=True,
+    help="Directory to save metric log files.",
+    type=click.Path(),
+)
+def main(port: str | None, log_dir: str):
     """A basic example of using the MariLib library."""
     mari = MariLib(on_event, port)
     tui = MariLibTUI()
+    logger = MetricsLogger(log_dir_base=log_dir)
 
     try:
         while True:
             with mari.lock:
                 mari.gateway.update()
+
+                if logger.active:
+                    logger.log_gateway_metrics(mari.gateway)
+                    logger.log_all_nodes_metrics(
+                        list(mari.gateway.node_registry.values())
+                    )
 
             with mari.lock:
                 nodes_exist = bool(mari.gateway.nodes)
@@ -59,6 +74,7 @@ def main(port: str | None):
         pass
     finally:
         tui.close()
+        logger.close()
 
 
 if __name__ == "__main__":
