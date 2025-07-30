@@ -81,7 +81,7 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
 )
 @click.option(
     "--log-dir",
-    default="logs_latency",
+    default="logs_metrics",
     show_default=True,
     help="Directory to save metric log files.",
     type=click.Path(),
@@ -92,7 +92,17 @@ def main(port: str | None, schedule: str, load: int, log_dir: str):
         return
 
     mari = MariLib(on_event, port)
-    logger = MetricsLogger(log_dir_base=log_dir)
+
+    setup_params = {
+        "script_name": "mari_edge_stats.py",
+        "port": port,
+        "schedule": schedule,
+        "load_percentage": load,
+    }
+
+    logger = MetricsLogger(
+        log_dir_base=log_dir, rotation_interval_minutes=1440, setup_params=setup_params
+    )
 
     schedule_id = SCHEDULE_NAME_TO_ID[schedule.lower()]
     test_state = TestState(
@@ -111,22 +121,27 @@ def main(port: str | None, schedule: str, load: int, log_dir: str):
         load_tester.start()
 
     try:
+        log_interval_seconds = 1.0
         normal_traffic_interval = 0.5
-        last_normal_send_time = time.monotonic()
+        last_log_time = 0
+        last_normal_send_time = 0
 
         while not stop_event.is_set():
+            current_time = time.monotonic()
+
             with mari.lock:
                 mari.gateway.update()
 
-                if logger.active:
-                    logger.log_gateway_metrics(mari.gateway)
-                    logger.log_all_nodes_metrics(
-                        list(mari.gateway.node_registry.values())
-                    )
+                if current_time - last_log_time >= log_interval_seconds:
+                    if logger.active:
+                        logger.log_gateway_metrics(mari.gateway)
+                        logger.log_all_nodes_metrics(
+                            list(mari.gateway.node_registry.values())
+                        )
+                    last_log_time = current_time
 
                 tui.render(mari)
 
-            current_time = time.monotonic()
             if current_time - last_normal_send_time >= normal_traffic_interval:
                 with mari.lock:
                     nodes_exist = bool(mari.gateway.nodes)

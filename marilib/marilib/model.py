@@ -65,8 +65,23 @@ class LatencyStats:
 
 @dataclass
 class FrameStats:
-    sent: list[FrameLogEntry] = field(default_factory=list)
-    received: list[FrameLogEntry] = field(default_factory=list)
+    window_seconds: int = 240  # set window duration
+    sent: deque[FrameLogEntry] = field(default_factory=deque)
+    received: deque[FrameLogEntry] = field(default_factory=deque)
+
+    def add_sent(self, frame: Frame):
+        """Adds a sent frame and prunes old entries."""
+        entry = FrameLogEntry(frame=frame)
+        self.sent.append(entry)
+        while self.sent and (entry.ts - self.sent[0].ts).total_seconds() > self.window_seconds:
+            self.sent.popleft()
+
+    def add_received(self, frame: Frame):
+        """Adds a received frame and prunes old entries."""
+        entry = FrameLogEntry(frame=frame)
+        self.received.append(entry)
+        while self.received and (entry.ts - self.received[0].ts).total_seconds() > self.window_seconds:
+            self.received.popleft()
 
     def sent_count(self, window_secs: int = 0) -> int:
         if window_secs == 0:
@@ -114,10 +129,10 @@ class MariNode:
         return datetime.now() - self.last_seen < timedelta(seconds=10)
 
     def register_received_frame(self, frame: Frame):
-        self.stats.received.append(FrameLogEntry(frame=frame))
+        self.stats.add_received(frame)
 
     def register_sent_frame(self, frame: Frame):
-        self.stats.sent.append(FrameLogEntry(frame=frame))
+        self.stats.add_sent(frame)
 
 
 @dataclass
@@ -169,7 +184,7 @@ class MariGateway:
     def register_received_frame(self, frame: Frame):
         if n := self.get_node(frame.header.source):
             n.register_received_frame(frame)
-            self.stats.received.append(FrameLogEntry(frame=frame))
+            self.stats.add_received(frame)
 
     def register_sent_frame(self, frame: Frame):
-        self.stats.sent.append(FrameLogEntry(frame=frame))
+        self.stats.add_sent(frame)

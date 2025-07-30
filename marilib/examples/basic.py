@@ -9,7 +9,7 @@ from marilib.serial_uart import get_default_port
 from marilib.tui import MariLibTUI
 
 SERIAL_PORT_DEFAULT = get_default_port()
-NORMAL_DATA_PAYLOAD = b"A" * 224
+NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
 
 def on_event(event: EdgeEvent, event_data: MariNode | Frame):
@@ -47,21 +47,33 @@ def main(port: str | None, log_dir: str):
     """A basic example of using the MariLib library."""
     mari = MariLib(on_event, port)
     tui = MariLibTUI()
-    logger = MetricsLogger(log_dir_base=log_dir)
+
+    setup_params = {"script_name": "basic.py", "port": port}
+
+    logger = MetricsLogger(
+        log_dir_base=log_dir, rotation_interval_minutes=1440, setup_params=setup_params
+    )
+
+    log_interval_seconds = 1.0
+    last_log_time = 0
 
     try:
         while True:
+            current_time = time.monotonic()
+
+            if current_time - last_log_time >= log_interval_seconds:
+                with mari.lock:
+                    if logger.active:
+                        logger.log_gateway_metrics(mari.gateway)
+                        logger.log_all_nodes_metrics(
+                            list(mari.gateway.node_registry.values())
+                        )
+                last_log_time = current_time
+
             with mari.lock:
                 mari.gateway.update()
-
-                if logger.active:
-                    logger.log_gateway_metrics(mari.gateway)
-                    logger.log_all_nodes_metrics(
-                        list(mari.gateway.node_registry.values())
-                    )
-
-            with mari.lock:
                 nodes_exist = bool(mari.gateway.nodes)
+
             if nodes_exist:
                 mari.send_frame(MARI_BROADCAST_ADDRESS, NORMAL_DATA_PAYLOAD)
 

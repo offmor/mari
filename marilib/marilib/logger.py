@@ -1,7 +1,7 @@
 import csv
 import os
 from datetime import datetime, timedelta
-from typing import IO, List
+from typing import IO, List, Dict
 
 from marilib.model import MariGateway, MariNode
 
@@ -11,14 +11,21 @@ class MetricsLogger:
     A metrics logger that saves statistics to CSV files with log rotation.
     """
 
-    def __init__(self, log_dir_base: str = "logs", rotation_interval_minutes: int = 1):
+    def __init__(
+        self,
+        log_dir_base: str = "logs",
+        rotation_interval_minutes: int = 1,
+        setup_params: Dict[str, any] | None = None,
+    ):
         """
-        Initializes the logger with rotation capabilities.
+        Initializes the logger with rotation and setup logging capabilities.
         """
         try:
             self.log_dir_base = log_dir_base
             self.rotation_interval = timedelta(minutes=rotation_interval_minutes)
-            self.run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            self.start_time = datetime.now()
+            self.run_timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
             self.log_dir = os.path.join(self.log_dir_base, f"run_{self.run_timestamp}")
             os.makedirs(self.log_dir, exist_ok=True)
 
@@ -28,12 +35,26 @@ class MetricsLogger:
             self._nodes_writer = None
             self.segment_start_time: datetime | None = None
 
+            self._log_setup_parameters(setup_params)
             self._open_new_segment()
             self.active = True
 
         except (IOError, OSError) as e:
             print(f"Error: Failed to initialize logger: {e}")
             self.active = False
+
+    def _log_setup_parameters(self, params: Dict[str, any] | None):
+        """Creates and writes test setup parameters to metrics_setup.csv."""
+        if not params:
+            return
+
+        setup_path = os.path.join(self.log_dir, "metrics_setup.csv")
+        with open(setup_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["param", "value"])
+            writer.writerow(["start_time", self.start_time.isoformat()])
+            for key, value in params.items():
+                writer.writerow([key, value])
 
     def _open_new_segment(self):
         self._close_segment_files()
