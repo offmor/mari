@@ -73,14 +73,20 @@ class FrameStats:
         """Adds a sent frame and prunes old entries."""
         entry = FrameLogEntry(frame=frame)
         self.sent.append(entry)
-        while self.sent and (entry.ts - self.sent[0].ts).total_seconds() > self.window_seconds:
+        while (
+            self.sent
+            and (entry.ts - self.sent[0].ts).total_seconds() > self.window_seconds
+        ):
             self.sent.popleft()
 
     def add_received(self, frame: Frame):
         """Adds a received frame and prunes old entries."""
         entry = FrameLogEntry(frame=frame)
         self.received.append(entry)
-        while self.received and (entry.ts - self.received[0].ts).total_seconds() > self.window_seconds:
+        while (
+            self.received
+            and (entry.ts - self.received[0].ts).total_seconds() > self.window_seconds
+        ):
             self.received.popleft()
 
     def sent_count(self, window_secs: int = 0) -> int:
