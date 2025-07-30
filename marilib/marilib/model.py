@@ -65,8 +65,29 @@ class LatencyStats:
 
 @dataclass
 class FrameStats:
-    sent: list[FrameLogEntry] = field(default_factory=list)
-    received: list[FrameLogEntry] = field(default_factory=list)
+    window_seconds: int = 240  # set window duration
+    sent: deque[FrameLogEntry] = field(default_factory=deque)
+    received: deque[FrameLogEntry] = field(default_factory=deque)
+
+    def add_sent(self, frame: Frame):
+        """Adds a sent frame and prunes old entries."""
+        entry = FrameLogEntry(frame=frame)
+        self.sent.append(entry)
+        while (
+            self.sent
+            and (entry.ts - self.sent[0].ts).total_seconds() > self.window_seconds
+        ):
+            self.sent.popleft()
+
+    def add_received(self, frame: Frame):
+        """Adds a received frame and prunes old entries."""
+        entry = FrameLogEntry(frame=frame)
+        self.received.append(entry)
+        while (
+            self.received
+            and (entry.ts - self.received[0].ts).total_seconds() > self.window_seconds
+        ):
+            self.received.popleft()
 
     def sent_count(self, window_secs: int = 0) -> int:
         if window_secs == 0:
@@ -114,10 +135,10 @@ class MariNode:
         return datetime.now() - self.last_seen < timedelta(seconds=10)
 
     def register_received_frame(self, frame: Frame):
-        self.stats.received.append(FrameLogEntry(frame=frame))
+        self.stats.add_received(frame)
 
     def register_sent_frame(self, frame: Frame):
-        self.stats.sent.append(FrameLogEntry(frame=frame))
+        self.stats.add_sent(frame)
 
 
 @dataclass
@@ -138,30 +159,29 @@ class GatewayInfo(Packet):
 class MariGateway:
     info: GatewayInfo = field(default_factory=GatewayInfo)
     nodes: list[MariNode] = field(default_factory=list)
+    node_registry: dict[int, MariNode] = field(default_factory=dict)
     stats: FrameStats = field(default_factory=FrameStats)
     latency_stats: LatencyStats = field(default_factory=LatencyStats)
 
     def update(self):
-        self.nodes = [n for n in self.nodes if n.is_alive]
+        self.nodes = [node for node in self.node_registry.values() if node.is_alive]
 
     def set_info(self, info: GatewayInfo):
         self.info = info
 
     def get_node(self, a: int) -> MariNode | None:
-        return next((n for n in self.nodes if n.address == a), None)
+        return self.node_registry.get(a)
 
     def add_node(self, a: int) -> MariNode:
         if node := self.get_node(a):
             node.last_seen = datetime.now()
             return node
         node = MariNode(a)
-        self.nodes.append(node)
+        self.node_registry[a] = node
         return node
 
     def remove_node(self, a: int) -> MariNode | None:
-        if n := self.get_node(a):
-            self.nodes.remove(n)
-        return n
+        return self.get_node(a)
 
     def update_node_liveness(self, a: int):
         if n := self.get_node(a):
@@ -170,7 +190,7 @@ class MariGateway:
     def register_received_frame(self, frame: Frame):
         if n := self.get_node(frame.header.source):
             n.register_received_frame(frame)
-            self.stats.received.append(FrameLogEntry(frame=frame))
+            self.stats.add_received(frame)
 
     def register_sent_frame(self, frame: Frame):
-        self.stats.sent.append(FrameLogEntry(frame=frame))
+        self.stats.add_sent(frame)

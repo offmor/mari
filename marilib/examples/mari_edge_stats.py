@@ -3,6 +3,7 @@ import threading
 import time
 
 import click
+from marilib.logger import MetricsLogger
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
 from marilib.marilib import MariLib
 from marilib.model import EdgeEvent, MariNode, SCHEDULES, TestState
@@ -78,12 +79,30 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     show_default=True,
     help="Load percentage to apply (0–100)",
 )
-def main(port: str | None, schedule: str, load: int):
+@click.option(
+    "--log-dir",
+    default="logs_metrics",
+    show_default=True,
+    help="Directory to save metric log files.",
+    type=click.Path(),
+)
+def main(port: str | None, schedule: str, load: int, log_dir: str):
     if not (0 <= load <= 100):
         sys.stderr.write("Error: --load must be between 0 and 100.\n")
         return
 
     mari = MariLib(on_event, port)
+
+    setup_params = {
+        "script_name": "mari_edge_stats.py",
+        "port": port,
+        "schedule": schedule,
+        "load_percentage": load,
+    }
+
+    logger = MetricsLogger(
+        log_dir_base=log_dir, rotation_interval_minutes=1440, setup_params=setup_params
+    )
 
     schedule_id = SCHEDULE_NAME_TO_ID[schedule.lower()]
     test_state = TestState(
@@ -102,15 +121,27 @@ def main(port: str | None, schedule: str, load: int):
         load_tester.start()
 
     try:
+        log_interval_seconds = 1.0
         normal_traffic_interval = 0.5
-        last_normal_send_time = time.monotonic()
+        last_log_time = 0
+        last_normal_send_time = 0
 
         while not stop_event.is_set():
+            current_time = time.monotonic()
+
             with mari.lock:
                 mari.gateway.update()
+
+                if current_time - last_log_time >= log_interval_seconds:
+                    if logger.active:
+                        logger.log_gateway_metrics(mari.gateway)
+                        logger.log_all_nodes_metrics(
+                            list(mari.gateway.node_registry.values())
+                        )
+                    last_log_time = current_time
+
                 tui.render(mari)
 
-            current_time = time.monotonic()
             if current_time - last_normal_send_time >= normal_traffic_interval:
                 with mari.lock:
                     nodes_exist = bool(mari.gateway.nodes)
@@ -128,6 +159,7 @@ def main(port: str | None, schedule: str, load: int):
         if load_tester.is_alive():
             load_tester.join()
         tui.close()
+        logger.close()
 
 
 if __name__ == "__main__":
