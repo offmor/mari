@@ -183,9 +183,16 @@ class MariGateway:
     def remove_node(self, a: int) -> MariNode | None:
         return self.get_node(a)
 
-    def update_node_liveness(self, a: int):
-        if n := self.get_node(a):
-            n.last_seen = datetime.now()
+    def update_node_liveness(self, addr: int):
+        """
+        Updates the last seen timestamp for a node.
+        If the node is not found, it is added to the list of nodes.
+        """
+        node = self.get_node(addr)
+        if node:
+            node.last_seen = datetime.now()
+        else:
+            self.add_node(addr)
 
     def register_received_frame(self, frame: Frame):
         if n := self.get_node(frame.header.source):
