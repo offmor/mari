@@ -94,10 +94,12 @@ class MariLibTUI:
         status.append("\n\nStats:    ", style="bold yellow")
         stats = mari.gateway.stats
         status.append(f"Nodes: {len(mari.gateway.nodes)}  |  ")
-        status.append(f"Frames TX: {stats.sent_count()}  |  ")
-        status.append(f"Frames RX: {stats.received_count()} |  ")
-        status.append(f"TX/s: {stats.sent_count(1)}  |  ")
-        status.append(f"RX/s: {stats.received_count(1)}")
+        status.append(f"Frames TX: {stats.sent_count(include_test_packets=False)}  |  ")
+        status.append(
+            f"Frames RX: {stats.received_count(include_test_packets=False)} |  "
+        )
+        status.append(f"TX/s: {stats.sent_count(1, include_test_packets=False)}  |  ")
+        status.append(f"RX/s: {stats.received_count(1, include_test_packets=False)}")
 
         return Panel(status, title="[bold]MariLib Status", border_style="blue")
 
@@ -115,7 +117,9 @@ class MariLibTUI:
         table.add_column("TX/s", justify="right")
         table.add_column("RX", justify="right")
         table.add_column("RX/s", justify="right")
-        table.add_column("SR", justify="right")
+        table.add_column("SR(total)", justify="right")
+        table.add_column("PDR Down", justify="right")
+        table.add_column("PDR Up", justify="right")
         table.add_column("RSSI", justify="right")
         table.add_column("Latency (ms)", justify="right")
         for node in nodes:
@@ -126,11 +130,13 @@ class MariLibTUI:
             )
             table.add_row(
                 f"0x{node.address:016X}",
-                str(node.stats.sent_count()),
-                str(node.stats.sent_count(1)),
-                str(node.stats.received_count()),
-                str(node.stats.received_count(1)),
-                f"{node.stats.success_rate(30):>4.0%}",
+                str(node.stats.sent_count(include_test_packets=False)),
+                str(node.stats.sent_count(1, include_test_packets=False)),
+                str(node.stats.received_count(include_test_packets=False)),
+                str(node.stats.received_count(1, include_test_packets=False)),
+                f"{node.stats.success_rate():>4.0%}",
+                f"{node.pdr_downlink:>4.0%}",
+                f"{node.pdr_uplink:>4.0%}",
                 f"{node.stats.received_rssi_dbm(5)}",
                 lat_str,
             )

@@ -80,7 +80,7 @@ def main(port: str | None, log_dir: str):
             with mari.lock:
                 tui.render(mari)
 
-            time.sleep(0.3)
+            time.sleep(0.5)
 
     except KeyboardInterrupt:
         pass

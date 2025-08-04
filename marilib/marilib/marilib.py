@@ -10,6 +10,7 @@ from marilib.model import (
     GatewayInfo,
     MariGateway,
     MariNode,
+    NodeStatsReply,
     SCHEDULES,
 )
 from marilib.protocol import ProtocolPayloadParserException
@@ -65,7 +66,7 @@ class MariLib:
         return self.serial_interface is not None
 
     def _is_test_packet(self, payload: bytes) -> bool:
-        """Checks if a packet is for testing and should be ignored by stats."""
+        """Determines if a packet is for testing purposes (load or latency)."""
         is_latency = payload.startswith(LATENCY_PACKET_MAGIC)
         is_load = payload == LOAD_PACKET_PAYLOAD
         return is_latency or is_load
@@ -95,15 +96,51 @@ class MariLib:
                     frame = Frame().from_bytes(data[1:])
                     self.gateway.update_node_liveness(frame.header.source)
                     payload = frame.payload
+                    node = self.gateway.get_node(frame.header.source)
+                    is_test_or_stats_packet = False
 
                     if payload.startswith(LATENCY_PACKET_MAGIC):
+                        is_test_or_stats_packet = True
                         if self.latency_tester:
                             self.latency_tester.handle_response(frame)
 
-                    if not self._is_test_packet(payload):
-                        self.gateway.register_received_frame(frame)
+                    elif len(payload) == 8:
+                        try:
+                            stats_reply = NodeStatsReply().from_bytes(payload)
 
-                    self.cb_application(EdgeEvent.NODE_DATA, frame)
+                            if node:
+                                if not hasattr(node, "stats_reply_count"):
+                                    node.stats_reply_count = 0
+                                node.stats_reply_count += 1
+
+                                node.last_reported_rx_count = stats_reply.rx_app_packets
+                                node.last_reported_tx_count = stats_reply.tx_app_packets
+
+                                # Calculate PDR Downlink
+                                if node.stats.cumulative_sent_non_test > 0:
+                                    pdr = (
+                                        node.last_reported_rx_count
+                                        / node.stats.cumulative_sent_non_test
+                                    )
+                                    node.pdr_downlink = min(pdr, 1.0)
+                                else:
+                                    node.pdr_downlink = 1.0
+
+                                # Calculate PDR Uplink
+                                if node.last_reported_tx_count > 0:
+                                    pdr = (
+                                        node.stats_reply_count
+                                        / node.last_reported_tx_count
+                                    )
+                                    node.pdr_uplink = min(pdr, 1.0)
+
+                        except (ValueError, ProtocolPayloadParserException):
+                            pass
+
+                    self.gateway.register_received_frame(frame, is_test_or_stats_packet)
+
+                    if not is_test_or_stats_packet:
+                        self.cb_application(EdgeEvent.NODE_DATA, frame)
 
                 except (ValueError, ProtocolPayloadParserException):
                     pass
@@ -112,14 +149,15 @@ class MariLib:
         assert self.serial_interface is not None
 
         mari_frame = Frame(Header(destination=dst), payload=payload)
+        is_test = self._is_test_packet(payload)
+
         with self.lock:
             # Only register statistics for normal data packets, not for test packets.
-            if not self._is_test_packet(payload):
-                if dst == MARI_BROADCAST_ADDRESS:
-                    for n in self.gateway.nodes:
-                        n.register_sent_frame(mari_frame)
-                elif n := self.gateway.get_node(dst):
-                    n.register_sent_frame(mari_frame)
-                self.gateway.register_sent_frame(mari_frame)
+            self.gateway.register_sent_frame(mari_frame, is_test)
+            if dst == MARI_BROADCAST_ADDRESS:
+                for n in self.gateway.nodes:
+                    n.register_sent_frame(mari_frame, is_test)
+            elif n := self.gateway.get_node(dst):
+                n.register_sent_frame(mari_frame, is_test)
 
         self.serial_interface.send_data(b"\x01" + mari_frame.to_bytes())
