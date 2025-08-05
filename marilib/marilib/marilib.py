@@ -79,8 +79,8 @@ class MariLib:
             event_type = data[0]
 
             if event_type == EdgeEvent.NODE_JOINED:
-                self.gateway.add_node(int.from_bytes(data[1:9], "little"))
-                self.cb_application(EdgeEvent.NODE_JOINED, None)
+                node = self.gateway.add_node(int.from_bytes(data[1:9], "little"))
+                self.cb_application(EdgeEvent.NODE_JOINED, node)
             elif event_type == EdgeEvent.NODE_LEFT:
                 if n := self.gateway.remove_node(int.from_bytes(data[1:9], "little")):
                     self.cb_application(EdgeEvent.NODE_LEFT, n)
