@@ -92,7 +92,6 @@ class FrameStats:
         """Adds a sent frame, prunes old entries, and updates counters."""
         self.cumulative_sent += 1
 
-        # Update both the counter and the detailed log deque.
         if not is_test_packet:
             self.cumulative_sent_non_test += 1
 
@@ -207,6 +206,11 @@ class GatewayInfo(Packet):
     network_id: int = 0
     schedule_id: int = 0
 
+    @property
+    def schedule_name(self) -> str:
+        schedule_data = SCHEDULES.get(self.schedule_id)
+        return schedule_data["name"] if schedule_data else "unknown"
+
 
 @dataclass
 class MariGateway:
@@ -242,10 +246,6 @@ class MariGateway:
         return self.node_registry.pop(a, None)
 
     def update_node_liveness(self, addr: int):
-        """
-        Updates the last seen timestamp for a node.
-        If the node is not found, it is added to the list of nodes.
-        """
         node = self.get_node(addr)
         if node:
             node.last_seen = datetime.now()

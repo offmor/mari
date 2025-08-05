@@ -71,14 +71,16 @@ class MariLibTUI:
         status.append("\n\nGateway: ", style="bold cyan")
         status.append(f"0x{mari.gateway.info.address:016X}  |  ")
         status.append("Network ID: ", style="bold cyan")
-        status.append(f"{mari.gateway.info.network_id}  |  ")
+        status.append(f"0x{mari.gateway.info.network_id:04X}  |  ")
         status.append("Schedule ID: ", style="bold cyan")
-        status.append(f"{mari.gateway.info.schedule_id}")
+        status.append(
+            f"{mari.gateway.info.schedule_id} ({mari.gateway.info.schedule_name})"
+        )
 
         if self.test_state and self.test_state.load > 0 and self.test_state.rate > 0:
             status.append("  |  ")
             status.append(
-                f"Test ({self.test_state.schedule_name}): ",
+                "Test load: ",
                 style="bold yellow",
             )
             status.append(f"{self.test_state.load}% of {self.test_state.rate} pps")

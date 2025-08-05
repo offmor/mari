@@ -13,8 +13,8 @@ from marilib.tui import MariLibTUI
 LOAD_PACKET_PAYLOAD = b"L"
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
-SCHEDULE_NAME_TO_ID = {
-    schedule["name"]: schedule_id for schedule_id, schedule in SCHEDULES.items()
+SCHEDULE_ID_TO_NAME = {
+    schedule_id: schedule["name"] for schedule_id, schedule in SCHEDULES.items()
 }
 
 
@@ -67,12 +67,6 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     help="Serial port to use (e.g., /dev/ttyACM0)",
 )
 @click.option(
-    "--schedule",
-    type=click.Choice(SCHEDULE_NAME_TO_ID.keys(), case_sensitive=False),
-    required=True,
-    help="Name of the schedule to test.",
-)
-@click.option(
     "--load",
     type=int,
     default=0,
@@ -86,17 +80,36 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     help="Directory to save metric log files.",
     type=click.Path(),
 )
-def main(port: str | None, schedule: str, load: int, log_dir: str):
+def main(port: str | None, load: int, log_dir: str):
     if not (0 <= load <= 100):
         sys.stderr.write("Error: --load must be between 0 and 100.\n")
         return
 
     mari = MariLib(on_event, port)
 
+    print("Connecting to gateway and waiting for its info packet...")
+    gateway_info_received = False
+    timeout_seconds = 10
+    start_wait = time.time()
+    while time.time() - start_wait < timeout_seconds:
+        with mari.lock:
+            if mari.gateway.info.address != 0:
+                gateway_info_received = True
+                break
+        time.sleep(0.1)
+
+    if not gateway_info_received:
+        sys.stderr.write("\nError: Timed out waiting for gateway info.\n")
+        return
+
+    schedule_id = mari.gateway.info.schedule_id
+    schedule_name = SCHEDULE_ID_TO_NAME.get(schedule_id, "unknown")
+    print(f"Gateway reported schedule: '{schedule_name}' (ID: {schedule_id})")
+
     setup_params = {
         "script_name": "mari_edge_stats.py",
         "port": port,
-        "schedule": schedule,
+        "schedule": f"{schedule_name} (auto-detected)",
         "load_percentage": load,
     }
 
@@ -104,10 +117,9 @@ def main(port: str | None, schedule: str, load: int, log_dir: str):
         log_dir_base=log_dir, rotation_interval_minutes=1440, setup_params=setup_params
     )
 
-    schedule_id = SCHEDULE_NAME_TO_ID[schedule.lower()]
     test_state = TestState(
         schedule_id=schedule_id,
-        schedule_name=schedule.lower(),
+        schedule_name=schedule_name,
         load=load,
     )
 
