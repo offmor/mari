@@ -51,10 +51,15 @@ class LoadTester(threading.Thread):
             self._stop_event.wait(delay)
 
 
+logger_container = {"instance": None}
+
+
 def on_event(event: EdgeEvent, event_data: MariNode | Frame):
-    """A simple event handler for the application."""
-    if event == EdgeEvent.NODE_DATA:
-        pass
+    """An event handler for the application."""
+    logger = logger_container["instance"]
+    if logger and logger.active and event_data:
+        if event in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT]:
+            logger.log_event(event_data.address, event.name)
 
 
 @click.command()
@@ -116,6 +121,8 @@ def main(port: str | None, load: int, log_dir: str):
     logger = MetricsLogger(
         log_dir_base=log_dir, rotation_interval_minutes=1440, setup_params=setup_params
     )
+
+    logger_container["instance"] = logger
 
     test_state = TestState(
         schedule_id=schedule_id,

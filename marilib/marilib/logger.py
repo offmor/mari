@@ -31,11 +31,22 @@ class MetricsLogger:
 
             self._gateway_file: IO[str] | None = None
             self._nodes_file: IO[str] | None = None
+            self._events_file: IO[str] | None = None
             self._gateway_writer = None
             self._nodes_writer = None
+            self._events_writer = None
             self.segment_start_time: datetime | None = None
 
             self._log_setup_parameters(setup_params)
+
+            # Open events log file
+            events_path = os.path.join(self.log_dir, "log_events.csv")
+            self._events_file = open(events_path, "w", newline="", encoding="utf-8")
+            self._events_writer = csv.writer(self._events_file)
+            self._events_writer.writerow(
+                ["timestamp", "node_address", "event_name", "event_tag"]
+            )
+
             self._open_new_segment()
             self.active = True
 
@@ -149,6 +160,22 @@ class MetricsLogger:
             ]
             self._nodes_writer.writerow(row)
 
+    def log_event(self, node_address: int, event_name: str, event_tag: str = ""):
+        """Logs an event to the events log file."""
+        if not self.active or self._events_writer is None:
+            return
+
+        timestamp = datetime.now().isoformat()
+        row = [
+            timestamp,
+            f"0x{node_address:016X}",
+            event_name,
+            event_tag,
+        ]
+        self._events_writer.writerow(row)
+        if self._events_file:
+            self._events_file.flush()
+
     def _close_segment_files(self):
         if self._gateway_file and not self._gateway_file.closed:
             self._gateway_file.close()
@@ -160,5 +187,7 @@ class MetricsLogger:
             return
 
         self._close_segment_files()
+        if self._events_file and not self._events_file.closed:
+            self._events_file.close()
         print(f"\nMetrics saved to: {self.log_dir}")
         self.active = False

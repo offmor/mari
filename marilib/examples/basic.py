@@ -11,20 +11,19 @@ from marilib.tui import MariLibTUI
 SERIAL_PORT_DEFAULT = get_default_port()
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
+logger_container = {"instance": None}
+
 
 def on_event(event: EdgeEvent, event_data: MariNode | Frame):
-    if event == EdgeEvent.NODE_JOINED:
-        # print(f"Node {event_data} joined")
-        # print("#", end="", flush=True)
-        pass
-    elif event == EdgeEvent.NODE_LEFT:
-        # print(f"Node {event_data} left")
-        # print("0", end="", flush=True)
-        pass
-    elif event == EdgeEvent.NODE_DATA:
-        # print(f"Got frame from 0x{event_data.header.source:016x}: {event_data.payload.hex()}, rssi: {event_data.stats.rssi_dbm}")
-        # print(".", end="", flush=True)
-        pass
+    """An event handler for the application that logs node join/leave events."""
+    logger = logger_container["instance"]
+    if logger and logger.active and event_data:
+        if event in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT]:
+            logger.log_event(event_data.address, event.name)
+        elif event == EdgeEvent.NODE_DATA:
+            # print(f"Got frame from 0x{event_data.header.source:016x}: {event_data.payload.hex()}, rssi: {event_data.stats.rssi_dbm}")
+            # print(".", end="", flush=True)
+            pass
 
 
 @click.command()
@@ -53,6 +52,8 @@ def main(port: str | None, log_dir: str):
     logger = MetricsLogger(
         log_dir_base=log_dir, rotation_interval_minutes=1440, setup_params=setup_params
     )
+
+    logger_container["instance"] = logger
 
     log_interval_seconds = 1.0
     last_log_time = 0
