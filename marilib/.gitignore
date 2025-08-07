@@ -39,3 +39,6 @@ dist/
 # Coverage reports
 .coverage
 coverage.*
+
+# do not commit logs
+logs_metrics

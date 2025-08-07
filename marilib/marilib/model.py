@@ -3,17 +3,36 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import IntEnum
+import rich
 
 from marilib.mari_protocol import Frame
 from marilib.protocol import Packet, PacketFieldMetadata
 
+# schedules taken from: https://github.com/DotBots/mari-evaluation/blob/main/simulations/radio-schedule.ipynb
 SCHEDULES = {
     # schedule_id: {name, max_nodes, d_down, sf_duration_ms}
-    0: {"name": "huge", "max_nodes": 101, "d_down": 22, "sf_duration": 223.31},
-    1: {"name": "big", "max_nodes": 74, "d_down": 16, "sf_duration": 164.63},
-    2: {"name": "medium", "max_nodes": 49, "d_down": 10, "sf_duration": 109.21},
-    3: {"name": "small", "max_nodes": 29, "d_down": 6, "sf_duration": 66.83},
-    4: {"name": "tiny", "max_nodes": 11, "d_down": 2, "sf_duration": 27.71},
+    1: {
+        "name": "huge",
+        "slots": "BBB" + ("SDUUUUDUUUUU" * 11) + "U" * 2,
+        "max_nodes": 101,
+        "d_down": 22,
+        "sf_duration": 223.31,
+    },
+    # NOTE: medium schedule still not available in the firmware
+    2: {
+        "name": "medium",
+        "slots": "BBB" + ("SDUUUUDUUUUU" * 5) + "U" * 4,
+        "max_nodes": 49,
+        "d_down": 10,
+        "sf_duration": 109.21,
+    },
+    5: {
+        "name": "tiny",
+        "slots": "BBB" + ("SDUUUUDUUUUU" * 1) + "U" * 2,
+        "max_nodes": 11,
+        "d_down": 2,
+        "sf_duration": 27.71,
+    },
 }
 
 
@@ -200,11 +219,64 @@ class GatewayInfo(Packet):
             PacketFieldMetadata(name="address", length=8),
             PacketFieldMetadata(name="network_id", length=2),
             PacketFieldMetadata(name="schedule_id", length=1),
+            PacketFieldMetadata(
+                name="schedule_stats", length=4 * 8
+            ),  # 4 uint64_t values
         ]
     )
     address: int = 0
     network_id: int = 0
     schedule_id: int = 0
+    schedule_stats: bytes = b""
+
+    # NOTE: maybe move to a separate class, dedicated to schedule stuff
+    def repr_schedule_stats(self):
+        if not self.schedule_stats:
+            return ""
+        schedule_data = SCHEDULES.get(self.schedule_id)
+        if not schedule_data:
+            return ""
+        all_bits = format(self.schedule_stats, f"0{4*8*8}b")
+        all_bits = [all_bits[i : i + 8] for i in range(0, len(all_bits), 8)]
+        all_bits.reverse()
+        # print(">>>", reversed(all_bits[0].split("")))
+        all_bits = [list(reversed(bits)) for bits in all_bits]
+        # now just flatten the list
+        all_bits = [item for sublist in all_bits for item in sublist]
+        # FIXME: why do we need to skip the first byte?
+        all_bits = all_bits[8:]
+        # cut it down to the number of slots
+        all_bits = all_bits[: len(schedule_data["slots"])]
+        return "".join(all_bits)
+
+    def repr_cell_nice(self, cell: str, is_used: int):
+        is_used = bool(int(is_used))
+        if cell == "B":
+            return rich.text.Text(
+                "B", style=f'bold white on {"red" if is_used else "indian_red"}'
+            )
+        elif cell == "S":
+            return rich.text.Text(
+                "S", style=f'bold white on {"purple" if is_used else "medium_purple2"}'
+            )
+        elif cell == "D":
+            return rich.text.Text(
+                "D", style=f'bold white on {"green" if is_used else "sea_green3"}'
+            )
+        elif cell == "U":
+            return rich.text.Text(
+                " ", style=f'bold white on {"yellow" if is_used else "light_yellow3"}'
+            )
+
+    def repr_schedule_cells_with_colors(self):
+        schedule_data = SCHEDULES.get(self.schedule_id)
+        if not schedule_data:
+            return ""
+        sched_stats = [
+            self.repr_cell_nice(cell, is_used)
+            for cell, is_used in zip(schedule_data["slots"], self.repr_schedule_stats())
+        ]
+        return rich.text.Text.assemble(*sched_stats)
 
     @property
     def schedule_name(self) -> str:
