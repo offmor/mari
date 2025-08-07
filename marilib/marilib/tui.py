@@ -44,7 +44,7 @@ class MariLibTUI:
         self.last_render_time = datetime.now()
         layout = Layout()
         layout.split(
-            Layout(self.create_header_panel(mari), size=10),
+            Layout(self.create_header_panel(mari), size=12),
             Layout(self.create_nodes_panel(mari)),
         )
         self.live.update(layout, refresh=True)
@@ -68,30 +68,21 @@ class MariLibTUI:
             style="bold green" if secs <= 1 else "bold red",
         )
 
-        status.append("\n\nGateway: ", style="bold cyan")
+        status.append("\n\nGateway:  ", style="bold cyan")
         status.append(f"0x{mari.gateway.info.address:016X}  |  ")
         status.append("Network ID: ", style="bold cyan")
         status.append(f"0x{mari.gateway.info.network_id:04X}  |  ")
-        status.append("Schedule ID: ", style="bold cyan")
+
+        status.append("\n\n")
+        status.append("Schedule: ", style="bold cyan")
         status.append(
-            f"{mari.gateway.info.schedule_id} ({mari.gateway.info.schedule_name})"
+            f"#{mari.gateway.info.schedule_id} ({mari.gateway.info.schedule_name})  |  "
         )
-        status.append("  |  ")
-        status.append("Schedule Stats: ", style="bold cyan")
-        # Convert to binary string, remove '0b' prefix, pad to 137 bits
-        status.append(mari.gateway.info.repr_schedule_stats())
+        status.append(mari.gateway.info.repr_schedule_cells_with_colors())
         status.append("\n\n")
 
-        if self.test_state and self.test_state.load > 0 and self.test_state.rate > 0:
-            status.append("  |  ")
-            status.append(
-                "Test load: ",
-                style="bold yellow",
-            )
-            status.append(f"{self.test_state.load}% of {self.test_state.rate} pps")
-
         if mari.gateway.latency_stats.last_ms > 0:
-            status.append("\n\nLatency: ", style="bold cyan")
+            status.append("Latency:  ", style="bold cyan")
             lat = mari.gateway.latency_stats
             status.append(
                 f"Last: {lat.last_ms:.1f}ms | Avg: {lat.avg_ms:.1f}ms | "
@@ -99,6 +90,14 @@ class MariLibTUI:
             )
 
         status.append("\n\nStats:    ", style="bold yellow")
+        if self.test_state and self.test_state.load > 0 and self.test_state.rate > 0:
+            status.append(
+                "Test load: ",
+                # style="bold yellow",
+            )
+            status.append(f"{self.test_state.load}% of {self.test_state.rate} pps")
+            status.append("  |  ")
+
         stats = mari.gateway.stats
         status.append(f"Nodes: {len(mari.gateway.nodes)}  |  ")
         status.append(f"Frames TX: {stats.sent_count(include_test_packets=False)}  |  ")
