@@ -1,27 +1,30 @@
 import csv
 import os
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import IO, List, Dict
 
 from marilib.model import MariGateway, MariNode
 
 
+@dataclass
 class MetricsLogger:
     """
     A metrics logger that saves statistics to CSV files with log rotation.
     """
 
-    def __init__(
-        self,
-        log_dir_base: str = "logs",
-        rotation_interval_minutes: int = 1,
-    ):
+    log_dir_base: str = "logs"
+    rotation_interval_minutes: int = 1440 # 1 day
+    already_logged_setup_parameters: bool = False
+    log_interval_seconds: float = 1.0
+    last_log_time: datetime = datetime.now()
+
+    def __post_init__(self):
         """
         Initializes the logger with rotation and setup logging capabilities.
         """
         try:
-            self.log_dir_base = log_dir_base
-            self.rotation_interval = timedelta(minutes=rotation_interval_minutes)
+            self.rotation_interval = timedelta(minutes=self.rotation_interval_minutes)
 
             self.start_time = datetime.now()
             self.run_timestamp = self.start_time.strftime("%Y%m%d_%H%M%S")
@@ -53,8 +56,10 @@ class MetricsLogger:
 
     def log_setup_parameters(self, params: Dict[str, any] | None):
         """Creates and writes test setup parameters to metrics_setup.csv."""
-        if not params:
+        if not params or self.already_logged_setup_parameters:
             return
+        # only log setup parameters once
+        self.already_logged_setup_parameters = True
 
         setup_path = os.path.join(self.log_dir, "metrics_setup.csv")
         with open(setup_path, "w", newline="", encoding="utf-8") as f:
@@ -115,6 +120,12 @@ class MetricsLogger:
             return False
         self._check_for_rotation()
         return True
+
+    def log_periodic_metrics(self, gateway: MariGateway, nodes: List[MariNode]):
+        if datetime.now() - self.last_log_time >= timedelta(seconds=self.log_interval_seconds):
+            self.log_gateway_metrics(gateway)
+            self.log_all_nodes_metrics(nodes)
+            self.last_log_time = datetime.now()
 
     def log_gateway_metrics(self, gateway: MariGateway):
         if not self._log_common() or self._gateway_writer is None:

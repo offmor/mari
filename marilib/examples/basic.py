@@ -46,28 +46,16 @@ def main(port: str | None, log_dir: str):
     setup_params = {"script_name": "basic.py", "port": port}
 
     logger = MetricsLogger(
-        log_dir_base=log_dir, rotation_interval_minutes=1440
+        log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
     )
 
     mari = MariLib(on_event, port, logger=logger, setup_params=setup_params)
 
-    log_interval_seconds = 1.0
-    last_log_time = 0
-
     try:
         while True:
-            current_time = time.monotonic()
+            mari.update()
 
-            if current_time - last_log_time >= log_interval_seconds:
-                with mari.lock:
-                    mari.log_periodic_metrics()
-                last_log_time = current_time
-
-            with mari.lock:
-                mari.gateway.update()
-                nodes_exist = bool(mari.gateway.nodes)
-
-            if nodes_exist:
+            if mari.gateway.nodes:
                 mari.send_frame(MARI_BROADCAST_ADDRESS, NORMAL_DATA_PAYLOAD)
 
             with mari.lock:

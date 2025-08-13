@@ -44,6 +44,12 @@ class MariLib:
         if self.logger and self.setup_params:
             self.logger.log_setup_parameters(self.setup_params)
 
+    def update(self):
+        with self.lock:
+            self.gateway.update()
+            if self.logger and self.logger.active:
+                self.logger.log_periodic_metrics(self.gateway, self.gateway.nodes)
+
     def get_max_downlink_rate(self, schedule_id: int) -> float:
         """Calculate the max downlink packets/sec for a given schedule_id."""
         schedule_params = SCHEDULES.get(schedule_id)
@@ -54,11 +60,6 @@ class MariLib:
         if sf_duration_ms == 0:
             return 0.0
         return d_down / (sf_duration_ms / 1000.0)
-
-    def log_periodic_metrics(self):
-        if self.logger and self.logger.active:
-            self.logger.log_gateway_metrics(self.gateway)
-            self.logger.log_all_nodes_metrics(list(self.gateway.node_registry.values()))
 
     def latency_test_enable(self):
         if self.latency_tester is None:
@@ -105,9 +106,9 @@ class MariLib:
                     self.cb_application(EdgeEvent.GATEWAY_INFO, self.gateway.info)
                     print(f"Gateway reported schedule: '{self.gateway.info.schedule_name}' (ID: {self.gateway.info.schedule_id})")
                     if self.logger and self.setup_params:
-                        self.setup_params["schedule"] = f"{self.gateway.info.schedule_name} (ID: {self.gateway.info.schedule_id})"
+                        self.setup_params["schedule_name"] = self.gateway.info.schedule_name
+                        self.setup_params["schedule_id"] = self.gateway.info.schedule_id
                         self.logger.log_setup_parameters(self.setup_params)
-                    # print(self.gateway.info.repr_schedule_stats())
                 except (ValueError, ProtocolPayloadParserException):
                     pass
             elif event_type == EdgeEvent.NODE_DATA:

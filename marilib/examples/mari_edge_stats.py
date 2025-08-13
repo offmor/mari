@@ -13,10 +13,6 @@ from marilib.tui_edge import MariLibTUIEdge
 LOAD_PACKET_PAYLOAD = b"L"
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
-SCHEDULE_ID_TO_NAME = {
-    schedule_id: schedule["name"] for schedule_id, schedule in SCHEDULES.items()
-}
-
 
 class LoadTester(threading.Thread):
     def __init__(
@@ -124,21 +120,15 @@ def main(port: str | None, load: int, log_dir: str):
         load_tester.start()
 
     try:
-        log_interval_seconds = 1.0
         normal_traffic_interval = 0.5
-        last_log_time = 0
         last_normal_send_time = 0
 
         while not stop_event.is_set():
             current_time = time.monotonic()
 
+            mari.update()
+
             with mari.lock:
-                mari.gateway.update()
-
-                if current_time - last_log_time >= log_interval_seconds:
-                    mari.log_periodic_metrics()
-                    last_log_time = current_time
-
                 tui.render(mari)
 
             if current_time - last_normal_send_time >= normal_traffic_interval:
