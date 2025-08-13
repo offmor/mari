@@ -50,9 +50,9 @@ class MariLib:
             if self.logger and self.logger.active:
                 self.logger.log_periodic_metrics(self.gateway, self.gateway.nodes)
 
-    def get_max_downlink_rate(self, schedule_id: int) -> float:
+    def get_max_downlink_rate(self) -> float:
         """Calculate the max downlink packets/sec for a given schedule_id."""
-        schedule_params = SCHEDULES.get(schedule_id)
+        schedule_params = SCHEDULES.get(self.gateway.info.schedule_id)
         if not schedule_params:
             return 0.0
         d_down = schedule_params["d_down"]
@@ -104,9 +104,13 @@ class MariLib:
                 try:
                     self.gateway.set_info(GatewayInfo().from_bytes(data[1:]))
                     self.cb_application(EdgeEvent.GATEWAY_INFO, self.gateway.info)
-                    print(f"Gateway reported schedule: '{self.gateway.info.schedule_name}' (ID: {self.gateway.info.schedule_id})")
+                    print(
+                        f"Gateway reported schedule: '{self.gateway.info.schedule_name}' (ID: {self.gateway.info.schedule_id})"
+                    )
                     if self.logger and self.setup_params:
-                        self.setup_params["schedule_name"] = self.gateway.info.schedule_name
+                        self.setup_params["schedule_name"] = (
+                            self.gateway.info.schedule_name
+                        )
                         self.setup_params["schedule_id"] = self.gateway.info.schedule_id
                         self.logger.log_setup_parameters(self.setup_params)
                 except (ValueError, ProtocolPayloadParserException):

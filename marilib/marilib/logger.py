@@ -14,7 +14,7 @@ class MetricsLogger:
     """
 
     log_dir_base: str = "logs"
-    rotation_interval_minutes: int = 1440 # 1 day
+    rotation_interval_minutes: int = 1440  # 1 day
     already_logged_setup_parameters: bool = False
     log_interval_seconds: float = 1.0
     last_log_time: datetime = datetime.now()
@@ -122,7 +122,9 @@ class MetricsLogger:
         return True
 
     def log_periodic_metrics(self, gateway: MariGateway, nodes: List[MariNode]):
-        if datetime.now() - self.last_log_time >= timedelta(seconds=self.log_interval_seconds):
+        if datetime.now() - self.last_log_time >= timedelta(
+            seconds=self.log_interval_seconds
+        ):
             self.log_gateway_metrics(gateway)
             self.log_all_nodes_metrics(nodes)
             self.last_log_time = datetime.now()

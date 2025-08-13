@@ -6,7 +6,7 @@ import click
 from marilib.logger import MetricsLogger
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
 from marilib.marilib import MariLib
-from marilib.model import EdgeEvent, GatewayInfo, MariNode, SCHEDULES, TestState
+from marilib.model import EdgeEvent, GatewayInfo, MariNode, TestState
 from marilib.serial_uart import get_default_port
 from marilib.tui_edge import MariLibTUIEdge
 
@@ -25,31 +25,47 @@ class LoadTester(threading.Thread):
         self.mari = mari
         self.test_state = test_state
         self._stop_event = stop_event
+        self.has_rate = False
+        self.delay = None
 
     def run(self):
-        if self.test_state.load == 0:
-            return
-        max_rate = self.mari.get_max_downlink_rate(self.test_state.schedule_id)
-        if max_rate == 0:
-            sys.stderr.write(
-                f"Error: Invalid schedule_id '{self.test_state.schedule_id}'.\n"
-            )
-            return
-        self.test_state.rate = int(max_rate)
-        packets_per_second = max_rate * (self.test_state.load / 100.0)
-        delay = 1.0 / packets_per_second if packets_per_second > 0 else float("inf")
         while not self._stop_event.is_set():
+            # wait for gateway schedule to be available and try to compute rate
+            if not self.has_rate:
+                self.set_rate()
+            if self.delay is None:
+                self._stop_event.wait(
+                    0.1
+                )  # fixed, waiting for gateway schedule to be available
+                continue
+
+            # once we have rate, send packets at that rate
             with self.mari.lock:
                 nodes_exist = bool(self.mari.gateway.nodes)
 
             if nodes_exist:
                 self.mari.send_frame(MARI_BROADCAST_ADDRESS, LOAD_PACKET_PAYLOAD)
-            self._stop_event.wait(delay)
+            self._stop_event.wait(self.delay)
+
+    def set_rate(self):
+        if self.test_state.load == 0:
+            return
+        max_rate = self.mari.get_max_downlink_rate()
+        if max_rate == 0:
+            sys.stderr.write("Error computing max rate")
+            return
+        self.test_state.rate = int(max_rate)
+        packets_per_second = max_rate * (self.test_state.load / 100.0)
+        self.delay = (
+            1.0 / packets_per_second if packets_per_second > 0 else float("inf")
+        )
+        self.has_rate = True
 
 
 def on_event(event: EdgeEvent, event_data: MariNode | Frame | GatewayInfo):
     """An event handler for the application."""
     pass
+
 
 @click.command()
 @click.option(
@@ -88,25 +104,7 @@ def main(port: str | None, load: int, log_dir: str):
 
     mari = MariLib(on_event, port, logger=logger, setup_params=setup_params)
 
-    print("Connecting to gateway and waiting for its info packet...")
-    gateway_info_received = False
-    timeout_seconds = 10
-    start_wait = time.time()
-    while time.time() - start_wait < timeout_seconds:
-        with mari.lock:
-            if mari.gateway.info.address != 0:
-                gateway_info_received = True
-                break
-        time.sleep(0.1)
-
-    if not gateway_info_received:
-        sys.stderr.write("\nError: Timed out waiting for gateway info.\n")
-        mari.logger.close()
-        return
-
     test_state = TestState(
-        schedule_id=mari.gateway.info.schedule_id,
-        schedule_name=mari.gateway.info.schedule_name,
         load=load,
     )
 
