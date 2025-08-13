@@ -2,6 +2,7 @@ import struct
 import threading
 import time
 from typing import TYPE_CHECKING
+import math
 
 from marilib.mari_protocol import Frame
 
@@ -14,7 +15,7 @@ LATENCY_PACKET_MAGIC = b"\x4c\x54"  # "LT" for Latency Test
 class LatencyTester:
     """A thread-based class to periodically test latency to all nodes."""
 
-    def __init__(self, marilib: "MariLib", interval: float = 2.0):
+    def __init__(self, marilib: "MariLib", interval: float = 10.0):
         self.marilib = marilib
         self.interval = interval
         self._stop_event = threading.Event()
@@ -61,6 +62,10 @@ class LatencyTester:
             # Unpack the original timestamp from the payload
             original_ts = struct.unpack("<d", frame.payload[2:10])[0]
             rtt = time.time() - original_ts
+            if math.isnan(rtt) or math.isinf(rtt):
+                return  # Ignore corrupted/invalid packets
+            if rtt < 0 or rtt > 5.0:
+                return  # Ignore this outlier
 
             node = self.marilib.gateway.get_node(frame.header.source)
             if node:
