@@ -31,7 +31,7 @@ class MariLib:
     gateway: MariGateway = field(default_factory=MariGateway)
     serial_interface: SerialAdapter | None = None
     started_ts: datetime = field(default_factory=datetime.now)
-    last_received_serial_data: datetime = field(default_factory=datetime.now)
+    last_received_serial_data_ts: datetime = field(default_factory=datetime.now)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     latency_tester: LatencyTester | None = None
 
@@ -81,7 +81,7 @@ class MariLib:
         with self.lock:
             if len(data) < 1:
                 return
-            self.last_received_serial_data = datetime.now()
+            self.last_received_serial_data_ts = datetime.now()
             event_type = data[0]
 
             if event_type == EdgeEvent.NODE_JOINED:

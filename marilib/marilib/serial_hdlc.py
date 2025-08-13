@@ -1,9 +1,3 @@
-# SPDX-FileCopyrightText: 2022-present Inria
-# SPDX-FileCopyrightText: 2022-present Alexandre Abadie <alexandre.abadie@inria.fr>
-# SPDX-FileCopyrightText: 2025-present Geovane Fedrecheski <geovane@fedrecheski.com>
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
 """Module implementing HDLC protocol primitives."""
 
 import logging

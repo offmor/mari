@@ -8,7 +8,7 @@ from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
 from marilib.marilib import MariLib
 from marilib.model import EdgeEvent, MariNode, SCHEDULES, TestState
 from marilib.serial_uart import get_default_port
-from marilib.tui import MariLibTUI
+from marilib.tui_edge import MariLibTUIEdge
 
 LOAD_PACKET_PAYLOAD = b"L"
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
@@ -124,7 +124,7 @@ def main(port: str | None, load: int, log_dir: str):
         load=load,
     )
 
-    tui = MariLibTUI(test_state=test_state)
+    tui = MariLibTUIEdge(test_state=test_state)
     stop_event = threading.Event()
 
     mari.latency_test_enable()

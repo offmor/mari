@@ -12,7 +12,7 @@ from marilib.marilib import MariLib
 from marilib.model import MariNode, TestState
 
 
-class MariLibTUI:
+class MariLibTUIEdge:
     """A Text-based User Interface for MariLib."""
 
     def __init__(
@@ -62,7 +62,7 @@ class MariLibTUI:
             f"since {mari.started_ts.strftime('%Y-%m-%d %H:%M:%S')}"
         )
         status.append("  |  ")
-        secs = int((datetime.now() - mari.last_received_serial_data).total_seconds())
+        secs = int((datetime.now() - mari.last_received_serial_data_ts).total_seconds())
         status.append(
             f"last received: {secs}s ago",
             style="bold green" if secs <= 1 else "bold red",
