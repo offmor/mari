@@ -1,7 +1,4 @@
-"""Module containing classes for interfacing with the DotBot gateway."""
-
 from abc import ABC, abstractmethod
-
 from rich import print
 
 from marilib.serial_hdlc import (
@@ -53,20 +50,11 @@ class SerialAdapter(GatewayAdapterBase):
         self.on_data_received = on_data_received
         self.serial = SerialInterface(self.port, self.baudrate, self.on_byte_received)
         print(f"[yellow]Connected to gateway on port {self.port}[/]")
-        # # send a disconnect followed by a connect to reset the gateway
-        # self.send_data(b"\xfe")
-        # self.send_data(b"\xff")
 
     def close(self):
         print("[yellow]Disconnect from gateway...[/]")
-        # self.send_data(b"\xfe")
-        # self.serial.stop()
 
     def send_data(self, data):
         self.serial.serial.flush()
-        # print(f"Sending data: {data.hex()}")
         encoded = hdlc_encode(data)
         self.serial.write(encoded)
-        # self.expected_length = -1
-        # self.serial.write(len(data).to_bytes(1, "big"))
-        # self.serial.write(data)

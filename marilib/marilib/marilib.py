@@ -1,7 +1,7 @@
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 
 from marilib.latency import LATENCY_PACKET_MAGIC, LatencyTester
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame, Header
@@ -31,19 +31,28 @@ class MariLib:
     gateway: MariGateway = field(default_factory=MariGateway)
     serial_interface: SerialAdapter | None = None
     started_ts: datetime = field(default_factory=datetime.now)
-    last_received_serial_data: datetime = field(default_factory=datetime.now)
+    last_received_serial_data_ts: datetime = field(default_factory=datetime.now)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     latency_tester: LatencyTester | None = None
+    setup_params: Dict[str, any] | None = None
 
     def __post_init__(self):
         if self.port is None:
             self.port = get_default_port()
         self.serial_interface = SerialAdapter(self.port, self.baudrate)
         self.serial_interface.init(self.on_data_received)
+        if self.logger and self.setup_params:
+            self.logger.log_setup_parameters(self.setup_params)
 
-    def get_max_downlink_rate(self, schedule_id: int) -> float:
+    def update(self):
+        with self.lock:
+            self.gateway.update()
+            if self.logger and self.logger.active:
+                self.logger.log_periodic_metrics(self.gateway, self.gateway.nodes)
+
+    def get_max_downlink_rate(self) -> float:
         """Calculate the max downlink packets/sec for a given schedule_id."""
-        schedule_params = SCHEDULES.get(schedule_id)
+        schedule_params = SCHEDULES.get(self.gateway.info.schedule_id)
         if not schedule_params:
             return 0.0
         d_down = schedule_params["d_down"]
@@ -51,11 +60,6 @@ class MariLib:
         if sf_duration_ms == 0:
             return 0.0
         return d_down / (sf_duration_ms / 1000.0)
-
-    def log_periodic_metrics(self):
-        if self.logger and self.logger.active:
-            self.logger.log_gateway_metrics(self.gateway)
-            self.logger.log_all_nodes_metrics(list(self.gateway.node_registry.values()))
 
     def latency_test_enable(self):
         if self.latency_tester is None:
@@ -81,7 +85,7 @@ class MariLib:
         with self.lock:
             if len(data) < 1:
                 return
-            self.last_received_serial_data = datetime.now()
+            self.last_received_serial_data_ts = datetime.now()
             event_type = data[0]
 
             if event_type == EdgeEvent.NODE_JOINED:
@@ -99,7 +103,16 @@ class MariLib:
             elif event_type == EdgeEvent.GATEWAY_INFO:
                 try:
                     self.gateway.set_info(GatewayInfo().from_bytes(data[1:]))
-                    # print(self.gateway.info.repr_schedule_stats())
+                    self.cb_application(EdgeEvent.GATEWAY_INFO, self.gateway.info)
+                    print(
+                        f"Gateway reported schedule: '{self.gateway.info.schedule_name}' (ID: {self.gateway.info.schedule_id})"
+                    )
+                    if self.logger and self.setup_params:
+                        self.setup_params["schedule_name"] = (
+                            self.gateway.info.schedule_name
+                        )
+                        self.setup_params["schedule_id"] = self.gateway.info.schedule_id
+                        self.logger.log_setup_parameters(self.setup_params)
                 except (ValueError, ProtocolPayloadParserException):
                     pass
             elif event_type == EdgeEvent.NODE_DATA:

@@ -38,8 +38,6 @@ SCHEDULES = {
 
 @dataclass
 class TestState:
-    schedule_id: int | None = None
-    schedule_name: str | None = None
     rate: int = 0
     load: int = 0
 
