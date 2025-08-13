@@ -1,7 +1,7 @@
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any, Callable, Dict
 
 from marilib.latency import LATENCY_PACKET_MAGIC, LatencyTester
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame, Header
@@ -34,12 +34,15 @@ class MariLib:
     last_received_serial_data_ts: datetime = field(default_factory=datetime.now)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     latency_tester: LatencyTester | None = None
+    setup_params: Dict[str, any] | None = None
 
     def __post_init__(self):
         if self.port is None:
             self.port = get_default_port()
         self.serial_interface = SerialAdapter(self.port, self.baudrate)
         self.serial_interface.init(self.on_data_received)
+        if self.logger and self.setup_params:
+            self.logger.log_setup_parameters(self.setup_params)
 
     def get_max_downlink_rate(self, schedule_id: int) -> float:
         """Calculate the max downlink packets/sec for a given schedule_id."""
@@ -99,6 +102,11 @@ class MariLib:
             elif event_type == EdgeEvent.GATEWAY_INFO:
                 try:
                     self.gateway.set_info(GatewayInfo().from_bytes(data[1:]))
+                    self.cb_application(EdgeEvent.GATEWAY_INFO, self.gateway.info)
+                    print(f"Gateway reported schedule: '{self.gateway.info.schedule_name}' (ID: {self.gateway.info.schedule_id})")
+                    if self.logger and self.setup_params:
+                        self.setup_params["schedule"] = f"{self.gateway.info.schedule_name} (ID: {self.gateway.info.schedule_id})"
+                        self.logger.log_setup_parameters(self.setup_params)
                     # print(self.gateway.info.repr_schedule_stats())
                 except (ValueError, ProtocolPayloadParserException):
                     pass

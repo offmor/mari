@@ -42,3 +42,4 @@ coverage.*
 
 # do not commit logs
 logs_metrics
+logs

@@ -15,7 +15,6 @@ class MetricsLogger:
         self,
         log_dir_base: str = "logs",
         rotation_interval_minutes: int = 1,
-        setup_params: Dict[str, any] | None = None,
     ):
         """
         Initializes the logger with rotation and setup logging capabilities.
@@ -37,8 +36,6 @@ class MetricsLogger:
             self._events_writer = None
             self.segment_start_time: datetime | None = None
 
-            self._log_setup_parameters(setup_params)
-
             # Open events log file
             events_path = os.path.join(self.log_dir, "log_events.csv")
             self._events_file = open(events_path, "w", newline="", encoding="utf-8")
@@ -54,7 +51,7 @@ class MetricsLogger:
             print(f"Error: Failed to initialize logger: {e}")
             self.active = False
 
-    def _log_setup_parameters(self, params: Dict[str, any] | None):
+    def log_setup_parameters(self, params: Dict[str, any] | None):
         """Creates and writes test setup parameters to metrics_setup.csv."""
         if not params:
             return

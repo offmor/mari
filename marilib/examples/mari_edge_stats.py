@@ -6,7 +6,7 @@ import click
 from marilib.logger import MetricsLogger
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
 from marilib.marilib import MariLib
-from marilib.model import EdgeEvent, MariNode, SCHEDULES, TestState
+from marilib.model import EdgeEvent, GatewayInfo, MariNode, SCHEDULES, TestState
 from marilib.serial_uart import get_default_port
 from marilib.tui_edge import MariLibTUIEdge
 
@@ -51,10 +51,9 @@ class LoadTester(threading.Thread):
             self._stop_event.wait(delay)
 
 
-def on_event(event: EdgeEvent, event_data: MariNode | Frame):
+def on_event(event: EdgeEvent, event_data: MariNode | Frame | GatewayInfo):
     """An event handler for the application."""
     pass
-
 
 @click.command()
 @click.option(
@@ -89,11 +88,9 @@ def main(port: str | None, load: int, log_dir: str):
         "port": port,
         "load_percentage": load,
     }
-    logger = MetricsLogger(
-        log_dir_base=log_dir, rotation_interval_minutes=1440, setup_params=setup_params
-    )
+    logger = MetricsLogger(log_dir_base=log_dir, rotation_interval_minutes=1440)
 
-    mari = MariLib(on_event, port, logger=logger)
+    mari = MariLib(on_event, port, logger=logger, setup_params=setup_params)
 
     print("Connecting to gateway and waiting for its info packet...")
     gateway_info_received = False
@@ -108,19 +105,12 @@ def main(port: str | None, load: int, log_dir: str):
 
     if not gateway_info_received:
         sys.stderr.write("\nError: Timed out waiting for gateway info.\n")
-        logger.close()
+        mari.logger.close()
         return
 
-    schedule_id = mari.gateway.info.schedule_id
-    schedule_name = SCHEDULE_ID_TO_NAME.get(schedule_id, "unknown")
-    print(f"Gateway reported schedule: '{schedule_name}' (ID: {schedule_id})")
-
-    setup_params["schedule"] = f"{schedule_name} (auto-detected)"
-    logger._log_setup_parameters(setup_params)
-
     test_state = TestState(
-        schedule_id=schedule_id,
-        schedule_name=schedule_name,
+        schedule_id=mari.gateway.info.schedule_id,
+        schedule_name=mari.gateway.info.schedule_name,
         load=load,
     )
 
@@ -168,7 +158,7 @@ def main(port: str | None, load: int, log_dir: str):
         if load_tester.is_alive():
             load_tester.join()
         tui.close()
-        logger.close()
+        mari.logger.close()
 
 
 if __name__ == "__main__":

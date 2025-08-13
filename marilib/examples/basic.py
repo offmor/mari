@@ -46,10 +46,10 @@ def main(port: str | None, log_dir: str):
     setup_params = {"script_name": "basic.py", "port": port}
 
     logger = MetricsLogger(
-        log_dir_base=log_dir, rotation_interval_minutes=1440, setup_params=setup_params
+        log_dir_base=log_dir, rotation_interval_minutes=1440
     )
 
-    mari = MariLib(on_event, port, logger=logger)
+    mari = MariLib(on_event, port, logger=logger, setup_params=setup_params)
 
     log_interval_seconds = 1.0
     last_log_time = 0
