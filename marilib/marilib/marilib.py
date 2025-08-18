@@ -73,10 +73,14 @@ class MariLibEdge:
     def on_mqtt_data_received(self, data: bytes):
         """Just forwards the data to the serial interface."""
         try:
-            frame = Frame().from_bytes(data)
-            # reuse the send_frame function to send the frame to the gateway
-            print(f"Forwarding frame of length {len(frame.payload)} to dst = {frame.header.destination:016X}")
-            self.send_frame(frame.header.destination, frame.payload)
+            event_type = EdgeEvent(data[0])
+            if event_type == EdgeEvent.NODE_DATA:
+                frame = Frame().from_bytes(data[1:])
+                # reuse the send_frame function to send the frame to the gateway
+                print(f"Forwarding frame of length {len(frame.payload)} to dst = {frame.header.destination:016X}")
+                self.send_frame(frame.header.destination, frame.payload)
+            else:
+                print(f"Received unknown event type: {event_type}")
         except (ValueError, ProtocolPayloadParserException) as exc:
             print(f"[red]Error parsing frame: {exc}[/]")
             return
@@ -186,6 +190,7 @@ class MariLibEdge:
             elif n := self.gateway.get_node(dst):
                 n.register_sent_frame(mari_frame, is_test)
 
+        # FIXME: instead of prefixing with a magic 0x01 byte, we should use EdgeEvent.NODE_DATA
         self.serial_interface.send_data(b"\x01" + mari_frame.to_bytes())
 
     def latency_test_enable(self):

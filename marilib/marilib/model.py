@@ -55,6 +55,10 @@ class EdgeEvent(IntEnum):
     NODE_KEEP_ALIVE = 4
     GATEWAY_INFO = 5
 
+    @classmethod
+    def to_bytes(cls, event: "EdgeEvent") -> bytes:
+        return event.value.to_bytes(1, "little")
+
 
 @dataclass
 class NodeStatsReply(Packet):
