@@ -10,6 +10,23 @@ MariLib provides a stateful class with gateway and node information, network sta
 
 See the how it works in `examples/basic.py`.
 
+## Getting started
+
+**Install the requirements**
+```
+cd marilib
+pip install -e . 
+```
+To run using the default gateway port /dev/ttyACM0
+```
+python example/basic.py
+```
+else, if you are not using the default gateway run:
+```
+python example/basic.py  -p /dev/ttyACMX
+```
+
+
 ## Minimal example
 Here is a minimal example showcasing how to use MariLib:
 
