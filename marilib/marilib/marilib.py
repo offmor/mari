@@ -34,14 +34,15 @@ class MariLib:
     last_received_serial_data_ts: datetime = field(default_factory=datetime.now)
     lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
     latency_tester: LatencyTester | None = None
-    setup_params: Dict[str, any] | None = None
+    main_file: str | None = None
 
     def __post_init__(self):
         if self.port is None:
             self.port = get_default_port()
         self.serial_interface = SerialAdapter(self.port, self.baudrate)
         self.serial_interface.init(self.on_data_received)
-        if self.logger and self.setup_params:
+        self.setup_params = {"main_file": self.main_file or "unknown", "serial_port": self.port}
+        if self.logger:
             self.logger.log_setup_parameters(self.setup_params)
 
     def update(self):

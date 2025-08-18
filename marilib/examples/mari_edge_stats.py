@@ -85,7 +85,7 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame | GatewayInfo):
 )
 @click.option(
     "--log-dir",
-    default="logs_metrics",
+    default="logs",
     show_default=True,
     help="Directory to save metric log files.",
     type=click.Path(),
@@ -95,18 +95,13 @@ def main(port: str | None, load: int, log_dir: str):
         sys.stderr.write("Error: --load must be between 0 and 100.\n")
         return
 
-    setup_params = {
-        "script_name": "mari_edge_stats.py",
-        "port": port,
-        "load_percentage": load,
-    }
-    logger = MetricsLogger(log_dir_base=log_dir, rotation_interval_minutes=1440)
-
-    mari = MariLib(on_event, port, logger=logger, setup_params=setup_params)
-
     test_state = TestState(
         load=load,
     )
+
+    logger = MetricsLogger(log_dir_base=log_dir, rotation_interval_minutes=1440)
+
+    mari = MariLib(on_event, port, logger=logger, main_file=__file__)
 
     tui = MariLibTUIEdge(test_state=test_state)
     stop_event = threading.Event()

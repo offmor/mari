@@ -43,13 +43,12 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
 def main(port: str | None, log_dir: str):
     """A basic example of using the MariLib library."""
     tui = MariLibTUIEdge()
-    setup_params = {"script_name": "basic.py", "port": port}
 
     logger = MetricsLogger(
         log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
     )
 
-    mari = MariLib(on_event, port, logger=logger, setup_params=setup_params)
+    mari = MariLib(on_event, port, logger=logger, main_file=__file__)
 
     try:
         while True:
