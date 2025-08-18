@@ -3,8 +3,8 @@ import time
 import click
 from marilib.logger import MetricsLogger
 from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, Frame
-from marilib.marilib import MariLib
 from marilib.model import EdgeEvent, MariNode
+from marilib.communication_adapter import SerialAdapter
 from marilib.serial_uart import get_default_port
 from marilib.tui_edge import MariLibTUIEdge
 
@@ -41,14 +41,16 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     type=click.Path(),
 )
 def main(port: str | None, log_dir: str):
-    """A basic example of using the MariLib library."""
+    """A basic example of using the MariLibEdge library."""
     tui = MariLibTUIEdge()
 
     logger = MetricsLogger(
         log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
     )
 
-    mari = MariLib(on_event, port, logger=logger, main_file=__file__)
+    serial_interface = SerialAdapter(port)
+
+    mari = MariLibEdge(on_event, serial_interface=serial_interface, logger=logger, main_file=__file__)
 
     try:
         while True:

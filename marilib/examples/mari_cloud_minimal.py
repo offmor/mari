@@ -1,11 +1,22 @@
 import time
 
-from marilib.marilib import MariLib
-from marilib.serial_uart import get_default_port
+from marilib.marilib import MariLibCloud
+from marilib.communication_adapter import MQTTAdapter
+
+
+def on_event(event, event_data):
+    """An event handler for the application."""
+    print(".", end="", flush=True)
 
 
 def main():
-    mari = MariLib(lambda event, data: print(event.name, data), get_default_port())
+    mqtt_interface = MQTTAdapter("localhost", 1883)
+
+    mari = MariLibCloud(
+        on_event,
+        mqtt_interface=mqtt_interface,
+    )
+
     while True:
         for node in mari.gateway.nodes:
             mari.send_frame(dst=node.address, payload=b"A" * 3)

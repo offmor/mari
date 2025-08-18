@@ -15,11 +15,11 @@ Here is a minimal example showcasing how to use MariLib:
 
 ```python
 import time
-from marilib.marilib import MariLib
+from marilib.marilib import MariLibEdge
 from marilib.serial_uart import get_default_port
 
 def main():
-    mari = MariLib(lambda event, data: print(event.name, data), get_default_port())
+    mari = MariLibEdge(lambda event, data: print(event.name, data), get_default_port())
     while True:
         for node in mari.gateway.nodes:
             mari.send_frame(dst=node.address, payload=b"A" * 3)
