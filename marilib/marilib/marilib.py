@@ -48,8 +48,7 @@ class MariLibEdge:
             "serial_port": self.serial_interface.port,
         }
         self.serial_interface.init(self.on_serial_data_received)
-        if self.mqtt_interface:
-            self.mqtt_interface.init(self.on_mqtt_data_received, is_edge=True)
+        # NOTE: MQTT interface is initialized only when the network_id is known
         if self.logger:
             self.logger.log_setup_parameters(self.setup_params)
 
@@ -76,8 +75,8 @@ class MariLibEdge:
             event_type = EdgeEvent(data[0])
             if event_type == EdgeEvent.NODE_DATA:
                 frame = Frame().from_bytes(data[1:])
+                # print(f"Forwarding frame of length {len(frame.payload)} to dst = {frame.header.destination:016X}, payload = {frame.payload.hex()}")
                 # reuse the send_frame function to send the frame to the gateway
-                print(f"Forwarding frame of length {len(frame.payload)} to dst = {frame.header.destination:016X}")
                 self.send_frame(frame.header.destination, frame.payload)
             else:
                 print(f"Received unknown event type: {event_type}")
@@ -111,6 +110,8 @@ class MariLibEdge:
             elif event_type == EdgeEvent.GATEWAY_INFO:
                 try:
                     self.gateway.set_info(GatewayInfo().from_bytes(data[1:]))
+                    if self.mqtt_interface:
+                        self.mqtt_interface.init(self.gateway.info.network_id_str, self.on_mqtt_data_received, is_edge=True)
                     self.cb_application(EdgeEvent.GATEWAY_INFO, self.gateway.info)
                     if self.logger and self.setup_params:
                         self.setup_params["schedule_name"] = (

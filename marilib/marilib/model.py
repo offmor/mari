@@ -291,6 +291,10 @@ class GatewayInfo(Packet):
         schedule_data = SCHEDULES.get(self.schedule_id)
         return schedule_data["name"] if schedule_data else "unknown"
 
+    @property
+    def network_id_str(self) -> str:
+        return f"{self.network_id:04X}"
+
 
 @dataclass
 class MariGateway:

@@ -7,6 +7,7 @@ from marilib.model import EdgeEvent, MariNode
 from marilib.communication_adapter import SerialAdapter
 from marilib.serial_uart import get_default_port
 from marilib.tui_edge import MariLibTUIEdge
+from marilib.marilib import MariLibEdge
 
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 

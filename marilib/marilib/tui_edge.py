@@ -8,12 +8,12 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from marilib.marilib import MariLib
+from marilib.marilib import MariLibEdge
 from marilib.model import MariNode, TestState
 
 
 class MariLibTUIEdge:
-    """A Text-based User Interface for MariLib."""
+    """A Text-based User Interface for MariLibEdge."""
 
     def __init__(
         self,
@@ -35,7 +35,7 @@ class MariLibTUIEdge:
         available_height = terminal_height - 10 - 2 - 2 - 1 - 2
         return max(2, available_height)
 
-    def render(self, mari: MariLib):
+    def render(self, mari: MariLibEdge):
         """Render the TUI layout."""
         if datetime.now() - self.last_render_time < timedelta(
             seconds=self.re_render_max_freq
@@ -49,16 +49,16 @@ class MariLibTUIEdge:
         )
         self.live.update(layout, refresh=True)
 
-    def create_header_panel(self, mari: MariLib) -> Panel:
+    def create_header_panel(self, mari: MariLibEdge) -> Panel:
         """Create the header panel with gateway and network stats."""
         status = Text()
-        status.append("MariLib Edge is ", style="bold")
+        status.append("MariLibEdge Edge is ", style="bold")
         status.append(
             "connected" if mari.serial_connected else "disconnected",
             style="bold green" if mari.serial_connected else "bold red",
         )
         status.append(
-            f" via {mari.port} at {mari.baudrate} baud "
+            f" via {mari.serial_interface.port} at {mari.serial_interface.baudrate} baud "
             f"since {mari.started_ts.strftime('%Y-%m-%d %H:%M:%S')}"
         )
         status.append("  |  ")
@@ -107,7 +107,7 @@ class MariLibTUIEdge:
         status.append(f"TX/s: {stats.sent_count(1, include_test_packets=False)}  |  ")
         status.append(f"RX/s: {stats.received_count(1, include_test_packets=False)}")
 
-        return Panel(status, title="[bold]MariLib Status", border_style="blue")
+        return Panel(status, title="[bold]MariLibEdge Status", border_style="blue")
 
     def create_nodes_table(self, nodes: list[MariNode], title="") -> Table:
         """Create a table displaying information about connected nodes."""
@@ -148,7 +148,7 @@ class MariLibTUIEdge:
             )
         return table
 
-    def create_nodes_panel(self, mari: MariLib) -> Panel:
+    def create_nodes_panel(self, mari: MariLibEdge) -> Panel:
         """Create the panel that contains the nodes table."""
         nodes = mari.gateway.nodes
         max_rows = self.get_max_rows()

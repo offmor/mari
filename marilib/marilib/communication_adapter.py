@@ -63,9 +63,9 @@ class MQTTAdapter(CommunicationAdapterBase):
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.network_id = "FFFF" # TODO: get from gateway info
+        self.network_id = "FFFF"
         self.client = None
-    
+
     # TODO: de-duplicate the on_message functions? decide as the integration evolves
 
     def on_message_edge(self, client, userdata, message):
@@ -97,8 +97,14 @@ class MQTTAdapter(CommunicationAdapterBase):
     def on_connect_cloud(self, client, userdata, flags, reason_code, properties):
         self.client.subscribe(f"/mari/{self.network_id}/edge_to_cloud")
 
-    def init(self, on_data_received: callable, is_edge: bool):
+    def init(self, network_id: str, on_data_received: callable, is_edge: bool):
+        if self.client:
+            # already initialized, do nothing
+            return
+
+        self.network_id = network_id
         self.is_edge = is_edge
+
         self.on_data_received = on_data_received
         self.client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
