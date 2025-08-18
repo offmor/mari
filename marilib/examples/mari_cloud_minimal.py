@@ -1,6 +1,6 @@
 import time
 
-from marilib.marilib import MariLibCloud
+from marilib.marilib_cloud import MarilibCloud
 from marilib.communication_adapter import MQTTAdapter
 
 
@@ -12,17 +12,17 @@ def on_event(event, event_data):
 def main():
     mqtt_interface = MQTTAdapter("localhost", 1883)
 
-    mari = MariLibCloud(
+    mari_cloud = MarilibCloud(
         on_event,
         mqtt_interface=mqtt_interface,
     )
 
     while True:
-        for node in mari.gateway.nodes:
-            mari.send_frame(dst=node.address, payload=b"A" * 3)
+        for node in mari_cloud.nodes:
+            mari_cloud.send_frame(dst=node.address, payload=b"A" * 3)
         statistics = [
             (f"{node.address:016X}", node.stats.received_rssi_dbm())
-            for node in mari.gateway.nodes
+            for node in mari_cloud.nodes
         ]
         print(f"Network statistics: {statistics}")
         time.sleep(0.25)

@@ -201,6 +201,7 @@ class FrameStats:
 @dataclass
 class MariNode:
     address: int
+    gateway_address: int
     last_seen: datetime = field(default_factory=lambda: datetime.now())
     stats: FrameStats = field(default_factory=FrameStats)
     latency_stats: LatencyStats = field(default_factory=LatencyStats)
@@ -322,7 +323,7 @@ class MariGateway:
         if node := self.get_node(a):
             node.last_seen = datetime.now()
             return node
-        node = MariNode(a)
+        node = MariNode(a, self.info.address)
         self.node_registry[a] = node
         return node
 

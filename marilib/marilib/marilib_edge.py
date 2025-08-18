@@ -21,9 +21,9 @@ LOAD_PACKET_PAYLOAD = b"L"
 
 
 @dataclass
-class MariLibEdge:
+class MarilibEdge:
     """
-    The MariLibEdge class runs in either a computer or a raspberry pi.
+    The MarilibEdge class runs in either a computer or a raspberry pi.
     It is used to communicate with:
     - a Mari radio gateway (nRF5340) via serial
     - a Mari cloud instance via MQTT (optional)

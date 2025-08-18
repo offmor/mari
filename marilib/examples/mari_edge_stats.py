@@ -101,7 +101,7 @@ def main(port: str | None, load: int, log_dir: str):
 
     logger = MetricsLogger(log_dir_base=log_dir, rotation_interval_minutes=1440)
 
-    mari = MariLibEdge(on_event, port, logger=logger, main_file=__file__)
+    mari = MarilibEdge(on_event, port, logger=logger, main_file=__file__)
 
     tui = MariLibTUIEdge(test_state=test_state)
     stop_event = threading.Event()

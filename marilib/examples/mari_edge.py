@@ -7,7 +7,7 @@ from marilib.model import EdgeEvent, MariNode
 from marilib.communication_adapter import SerialAdapter
 from marilib.serial_uart import get_default_port
 from marilib.tui_edge import MariLibTUIEdge
-from marilib.marilib import MariLibEdge
+from marilib.marilib import MarilibEdge
 
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
@@ -42,7 +42,7 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     type=click.Path(),
 )
 def main(port: str | None, log_dir: str):
-    """A basic example of using the MariLibEdge library."""
+    """A basic example of using the MarilibEdge library."""
     tui = MariLibTUIEdge()
 
     logger = MetricsLogger(
@@ -51,7 +51,7 @@ def main(port: str | None, log_dir: str):
 
     serial_interface = SerialAdapter(port)
 
-    mari = MariLibEdge(on_event, serial_interface=serial_interface, logger=logger, main_file=__file__)
+    mari = MarilibEdge(on_event, serial_interface=serial_interface, logger=logger, main_file=__file__)
 
     try:
         while True:

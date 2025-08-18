@@ -1,6 +1,6 @@
 import time
 
-from marilib.marilib import MariLibEdge
+from marilib.marilib import MarilibEdge
 from marilib.communication_adapter import MQTTAdapter, SerialAdapter
 from marilib.serial_uart import get_default_port
 
@@ -12,7 +12,7 @@ def on_event(event, event_data):
 
 
 def main():
-    mari = MariLibEdge(
+    mari = MarilibEdge(
         on_event,
         serial_interface=SerialAdapter(get_default_port()),
         mqtt_interface=MQTTAdapter("localhost", 1883),
