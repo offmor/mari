@@ -26,6 +26,11 @@ else, if you are not using the default gateway run:
 python example/basic.py  -p /dev/ttyACMX
 ```
 
+**Note
+To check what serial port your gateway is using run
+```
+ls -l /dev/ttyACM*
+```
 
 ## Minimal example
 Here is a minimal example showcasing how to use MariLib:
