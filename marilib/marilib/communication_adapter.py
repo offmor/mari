@@ -60,12 +60,14 @@ class SerialAdapter(CommunicationAdapterBase):
 class MQTTAdapter(CommunicationAdapterBase):
     """Class used to interface with MQTT."""
 
-    def __init__(self, host, port):
+    def __init__(self, host, port, is_edge: bool):
         self.host = host
         self.port = port
-        self.network_id = "FFFF"
+        self.network_id = None
         self.client = None
-    
+        self.on_data_received = None
+        self.is_edge = is_edge
+
     @classmethod
     def from_host_port(cls, host_port: str):
         host, port = host_port.split(":")
@@ -76,23 +78,36 @@ class MQTTAdapter(CommunicationAdapterBase):
     def is_ready(self) -> bool:
         return self.client is not None and self.client.is_connected()
 
-    def init(self, network_id: str, on_data_received: callable, is_edge: bool):
+    def set_network_id(self, network_id: str):
+        self.network_id = network_id
+
+    def set_on_data_received(self, on_data_received: callable):
+        self.on_data_received = on_data_received
+
+    def update(self, network_id: str, on_data_received: callable):
+        if self.network_id is None:
+            self.network_id = network_id
+        else:
+            # TODO: handle the case when the network_id changes
+            pass
+        if self.on_data_received is None:
+            self.set_on_data_received(on_data_received)
+        if not self.is_ready():
+            self.init()
+
+    def init(self):
         if self.client:
             # already initialized, do nothing
             return
 
-        self.network_id = network_id
-        self.is_edge = is_edge
-
-        self.on_data_received = on_data_received
         self.client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
             protocol=mqtt.MQTTProtocolVersion.MQTTv5,
         )
         # self.client.tls_set_context(context=None)  # Commented out for plain MQTT
         self.client.on_log = self._on_log
-        self.client.on_connect = self._on_connect_edge if is_edge else self._on_connect_cloud
-        self.client.on_message = self._on_message_edge if is_edge else self._on_message_cloud
+        self.client.on_connect = self._on_connect_edge if self.is_edge else self._on_connect_cloud
+        self.client.on_message = self._on_message_edge if self.is_edge else self._on_message_cloud
         try:
             self.client.connect(self.host, self.port, 60)
         except Exception as e:

@@ -48,8 +48,8 @@ classifiers = [
 marilib = "marilib.cli.main:main"
 
 [tool.ruff]
-lint.select = ["E", "F"]
-line-length = 88
+lint.select = ["E", "F", "W"]
+line-length = 100
 lint.ignore = ["E501", "E722"]
 
 [tool.isort]
@@ -57,7 +57,7 @@ multi_line_output = 3  # Use Vertical Hanging Indent
 profile = "black"
 
 [tool.black]
-line-length = 79
+line-length = 100
 skip-string-normalization = true
 
 [tool.hatch.envs.hatch-test]

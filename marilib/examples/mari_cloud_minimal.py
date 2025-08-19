@@ -2,17 +2,20 @@ import time
 
 from marilib.marilib_cloud import MarilibCloud
 from marilib.communication_adapter import MQTTAdapter
+from marilib.model import EdgeEvent
 
 
 def on_event(event, event_data):
     """An event handler for the application."""
+    if event == EdgeEvent.GATEWAY_INFO:
+        return
     print(".", end="", flush=True)
 
 
 def main():
     mari_cloud = MarilibCloud(
         on_event,
-        mqtt_interface=MQTTAdapter("localhost", 1883),
+        mqtt_interface=MQTTAdapter("localhost", 1883, is_edge=False),
         network_id=0xA0,
     )
 
@@ -24,7 +27,7 @@ def main():
             for node in mari_cloud.nodes
         ]
         print(f"Network statistics: {statistics}")
-        time.sleep(0.25)
+        time.sleep(3)
 
 
 if __name__ == "__main__":

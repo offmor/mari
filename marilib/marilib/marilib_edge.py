@@ -11,7 +11,7 @@ from marilib.model import (
     GatewayInfo,
     MariGateway,
     MariNode,
-    NodeStatsReply,
+    NodeInfoEdge,
     SCHEDULES,
 )
 from marilib.protocol import ProtocolPayloadParserException
@@ -50,7 +50,7 @@ class MarilibEdge:
         self.serial_interface.init(self.on_serial_data_received)
         if not self.mqtt_interface:
             self.mqtt_interface = MQTTAdapterDummy()
-        # NOTE: MQTT interface is initialized only when the network_id is known
+        # NOTE: MQTT interface will only be initialized when the network_id is known
         if self.logger:
             self.logger.log_setup_parameters(self.setup_params)
 
@@ -74,7 +74,7 @@ class MarilibEdge:
         if sf_duration_ms == 0:
             return 0.0
         return d_down / (sf_duration_ms / 1000.0)
-    
+
     def on_mqtt_data_received(self, data: bytes):
         """Just forwards the data to the serial interface."""
         try:
@@ -94,98 +94,87 @@ class MarilibEdge:
     def serial_connected(self) -> bool:
         return self.serial_interface is not None
 
-    def handle_serial_data(self, data: bytes):
+    def add_node(self, address: int) -> MariNode:
         with self.lock:
-            if len(data) < 1:
-                return False
-            self.last_received_serial_data_ts = datetime.now()
-            event_type = data[0]
+            return self.gateway.add_node(address)
 
-            if event_type == EdgeEvent.NODE_JOINED:
-                node = self.gateway.add_node(int.from_bytes(data[1:9], "little"))
-                if self.logger:
-                    self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_JOINED.name)
-                self.cb_application(EdgeEvent.NODE_JOINED, (self.gateway, node))
-            elif event_type == EdgeEvent.NODE_LEFT:
-                if n := self.gateway.remove_node(int.from_bytes(data[1:9], "little")):
-                    if self.logger:
-                        self.logger.log_event(n.address, EdgeEvent.NODE_LEFT.name)
-                    self.cb_application(EdgeEvent.NODE_LEFT, n)
-            elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
-                self.gateway.update_node_liveness(int.from_bytes(data[1:9], "little"))
-            elif event_type == EdgeEvent.GATEWAY_INFO:
-                try:
+    def remove_node(self, address: int) -> MariNode | None:
+        with self.lock:
+            return self.gateway.remove_node(address)
+
+    def handle_serial_data(self, data: bytes) -> tuple[bool, EdgeEvent, Any]:
+        """
+        Handles the serial data received from the radio gateway:
+        - parses the event
+        - updates node or gateway information
+        - returns the event type and data
+        """
+
+        if len(data) < 1:
+            return False, EdgeEvent.UNKNOWN, None
+
+        self.last_received_serial_data_ts = datetime.now()
+
+        try:
+            event_type = EdgeEvent(data[0])
+        except ValueError:
+            return False, EdgeEvent.UNKNOWN, None
+
+        if event_type == EdgeEvent.NODE_JOINED:
+            node_info = NodeInfoEdge().from_bytes(data[1:])
+            self.add_node(node_info.address)
+            return True, event_type, node_info
+
+        elif event_type == EdgeEvent.NODE_LEFT:
+            node_info = NodeInfoEdge().from_bytes(data[1:])
+            if node := self.remove_node(node_info.address):
+                return True, event_type, node_info
+            else:
+                return False, event_type, node
+
+        elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
+            node_info = NodeInfoEdge().from_bytes(data[1:])
+            with self.lock:
+                node = self.gateway.update_node_liveness(node_info.address)
+            return True, event_type, node_info
+
+        elif event_type == EdgeEvent.GATEWAY_INFO:
+            try:
+                with self.lock:
                     self.gateway.set_info(GatewayInfo().from_bytes(data[1:]))
-                    if not self.mqtt_interface.is_ready():
-                        # got the network id via gateway info, so we can initialize the MQTT interface
-                        self.mqtt_interface.init(self.gateway.info.network_id_str, self.on_mqtt_data_received, is_edge=True)
-                    self.cb_application(EdgeEvent.GATEWAY_INFO, self.gateway.info)
-                    if self.logger and self.setup_params:
-                        self.setup_params["schedule_name"] = (
-                            self.gateway.info.schedule_name
-                        )
-                        self.setup_params["schedule_id"] = self.gateway.info.schedule_id
-                        self.logger.log_setup_parameters(self.setup_params)
-                except (ValueError, ProtocolPayloadParserException):
-                    return False
-            elif event_type == EdgeEvent.NODE_DATA:
-                try:
-                    frame = Frame().from_bytes(data[1:])
+                return True, event_type, self.gateway.info
+            except (ValueError, ProtocolPayloadParserException):
+                return False, EdgeEvent.UNKNOWN, None
+
+        elif event_type == EdgeEvent.NODE_DATA:
+            try:
+                frame = Frame().from_bytes(data[1:])
+                with self.lock:
                     self.gateway.update_node_liveness(frame.header.source)
-                    payload = frame.payload
-                    node = self.gateway.get_node(frame.header.source)
-                    is_test_or_stats_packet = False
-
-                    if payload.startswith(LATENCY_PACKET_MAGIC):
-                        is_test_or_stats_packet = True
-                        if self.latency_tester:
-                            self.latency_tester.handle_response(frame)
-
-                    elif len(payload) == 8:
-                        try:
-                            stats_reply = NodeStatsReply().from_bytes(payload)
-
-                            if node:
-                                if not hasattr(node, "stats_reply_count"):
-                                    node.stats_reply_count = 0
-                                node.stats_reply_count += 1
-
-                                node.last_reported_rx_count = stats_reply.rx_app_packets
-                                node.last_reported_tx_count = stats_reply.tx_app_packets
-
-                                # Calculate PDR Downlink
-                                if node.stats.cumulative_sent_non_test > 0:
-                                    pdr = (
-                                        node.last_reported_rx_count
-                                        / node.stats.cumulative_sent_non_test
-                                    )
-                                    node.pdr_downlink = min(pdr, 1.0)
-                                else:
-                                    node.pdr_downlink = 1.0
-
-                                # Calculate PDR Uplink
-                                if node.last_reported_tx_count > 0:
-                                    pdr = (
-                                        node.stats_reply_count
-                                        / node.last_reported_tx_count
-                                    )
-                                    node.pdr_uplink = min(pdr, 1.0)
-
-                        except (ValueError, ProtocolPayloadParserException):
-                            pass
-
-                    self.gateway.register_received_frame(frame, is_test_or_stats_packet)
-
-                    if not is_test_or_stats_packet:
-                        self.cb_application(EdgeEvent.NODE_DATA, frame)
-
-                except (ValueError, ProtocolPayloadParserException):
-                    return False
-        return True
+                return True, event_type, frame
+            except (ValueError, ProtocolPayloadParserException):
+                return False, EdgeEvent.UNKNOWN, None
+        return True, event_type, None
 
     def on_serial_data_received(self, data: bytes):
-        if self.handle_serial_data(data):
-            self.mqtt_interface.send_data_to_cloud(data)
+        res, event_type, event_data = self.handle_serial_data(data)
+        if res:
+            if self.logger and event_type in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT]:
+                self.logger.log_event(event_data.gateway_address, event_data.address, event_type.name)
+            if event_type == EdgeEvent.GATEWAY_INFO:
+                # when the first GATEWAY_INFO is received, this will cause the MQTT interface to be initialized
+                self.mqtt_interface.update(event_data.network_id_str, self.on_mqtt_data_received)
+                if self.logger:
+                    self.setup_params["schedule_name"] = self.gateway.info.schedule_name
+                    self.logger.log_setup_parameters(self.setup_params)
+            self.cb_application(event_type, event_data)
+            self.send_data_to_cloud(event_type, event_data)
+
+    def send_data_to_cloud(self, event_type: EdgeEvent, event_data: NodeInfoEdge | GatewayInfo | Frame):
+        if event_type in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT, EdgeEvent.NODE_KEEP_ALIVE]:
+            event_data = event_data.to_cloud(self.gateway.info.address)
+        data = EdgeEvent.to_bytes(event_type) + event_data.to_bytes()
+        self.mqtt_interface.send_data_to_cloud(data)
 
     def send_frame(self, dst: int, payload: bytes):
         """Sends a frame to the gateway via serial."""

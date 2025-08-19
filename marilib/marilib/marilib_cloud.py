@@ -10,7 +10,7 @@ from marilib.model import (
     GatewayInfo,
     MariGateway,
     MariNode,
-    NodeEventInfo,
+    NodeInfoCloud,
 )
 from marilib.protocol import ProtocolPayloadParserException
 from marilib.communication_adapter import MQTTAdapter
@@ -45,7 +45,9 @@ class MarilibCloud:
             "mqtt_port": self.mqtt_interface.port,
             "network_id": self.network_id,
         }
-        self.mqtt_interface.init(self.network_id_str, self.on_mqtt_data_received, is_edge=False)
+        self.mqtt_interface.set_network_id(self.network_id_str)
+        self.mqtt_interface.set_on_data_received(self.on_mqtt_data_received)
+        self.mqtt_interface.init()
         if self.logger:
             self.logger.log_setup_parameters(self.setup_params)
 
@@ -88,29 +90,29 @@ class MarilibCloud:
 
             if event_type == EdgeEvent.NODE_JOINED:
                 # NOTE: the serial protocol still needs to be changed to also send the gateway address
-                node_info = NodeEventInfo().from_bytes(data[1:])
+                node_info = NodeInfoCloud().from_bytes(data[1:])
                 gateway = self.gateways.get(node_info.gateway_address)
                 if gateway:
-                    node = gateway.add_node(node_info.node_address)
+                    node = gateway.add_node(node_info.address)
                     if self.logger:
                         self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_JOINED.name)
                     self.cb_application(EdgeEvent.NODE_JOINED, (gateway, node))
 
             elif event_type == EdgeEvent.NODE_LEFT:
                 # FIXME: the serial protocol still needs to be changed to also send the gateway address
-                node_info = NodeEventInfo().from_bytes(data[1:])
+                node_info = NodeInfoCloud().from_bytes(data[1:])
                 gateway = self.gateways.get(node_info.gateway_address)
-                if gateway and node_info.node_address in gateway.nodes_addresses:
-                    node = gateway.remove_node(node_info.node_address)
+                if gateway and node_info.address in gateway.nodes_addresses:
+                    node = gateway.remove_node(node_info.address)
                     if node and self.logger:
                         self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_LEFT.name)
                     self.cb_application(EdgeEvent.NODE_LEFT, (gateway, node))
 
             elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
-                node_info = NodeEventInfo().from_bytes(data[1:])
+                node_info = NodeInfoCloud().from_bytes(data[1:])
                 gateway = self.gateways.get(node_info.gateway_address)
                 if gateway:
-                    gateway.update_node_liveness(node_info.node_address)
+                    gateway.update_node_liveness(node_info.address)
 
             elif event_type == EdgeEvent.GATEWAY_INFO:
                 try:
@@ -203,4 +205,4 @@ class MarilibCloud:
         """
         mari_frame = Frame(Header(destination=dst), payload=payload)
 
-        self.mqtt_interface.send_data_to_edge(EdgeEvent.NODE_DATA + mari_frame.to_bytes())
+        self.mqtt_interface.send_data_to_edge(EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes())

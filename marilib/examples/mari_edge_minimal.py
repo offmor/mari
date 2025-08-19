@@ -16,7 +16,7 @@ def main():
     mari_edge = MarilibEdge(
         on_event,
         serial_interface=SerialAdapter(get_default_port()),
-        mqtt_interface=MQTTAdapter("localhost", 1883),
+        mqtt_interface=MQTTAdapter("localhost", 1883, is_edge=True),
     )
 
     while True:

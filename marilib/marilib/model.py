@@ -54,6 +54,7 @@ class EdgeEvent(IntEnum):
     NODE_DATA = 3
     NODE_KEEP_ALIVE = 4
     GATEWAY_INFO = 5
+    UNKNOWN = 255
 
     @classmethod
     def to_bytes(cls, event: "EdgeEvent") -> bytes:
@@ -61,15 +62,28 @@ class EdgeEvent(IntEnum):
 
 
 @dataclass
-class NodeEventInfo(Packet):
+class NodeInfoCloud(Packet):
     metadata: list[PacketFieldMetadata] = field(
         default_factory=lambda: [
+            PacketFieldMetadata(name="address", length=8),
             PacketFieldMetadata(name="gateway_address", length=8),
-            PacketFieldMetadata(name="node_address", length=8),
         ]
     )
-    gateway_address: int
-    node_address: int
+    address: int = 0
+    gateway_address: int = 0
+
+
+@dataclass
+class NodeInfoEdge(Packet):
+    metadata: list[PacketFieldMetadata] = field(
+        default_factory=lambda: [
+            PacketFieldMetadata(name="address", length=8),
+        ]
+    )
+    address: int = 0
+
+    def to_cloud(self, gateway_address: int) -> NodeInfoCloud:
+        return NodeInfoCloud(address=self.address, gateway_address=gateway_address)
 
 
 @dataclass
@@ -232,6 +246,9 @@ class MariNode:
     def register_sent_frame(self, frame: Frame, is_test_packet: bool):
         self.stats.add_sent(frame, is_test_packet)
 
+    def as_node_info_cloud(self) -> NodeInfoCloud:
+        return NodeInfoCloud(address=self.address, gateway_address=self.gateway_address)
+
 
 @dataclass
 class GatewayInfo(Packet):
@@ -346,12 +363,13 @@ class MariGateway:
     def remove_node(self, a: int) -> MariNode | None:
         return self.node_registry.pop(a, None)
 
-    def update_node_liveness(self, addr: int):
+    def update_node_liveness(self, addr: int) -> MariNode:
         node = self.get_node(addr)
         if node:
             node.last_seen = datetime.now()
         else:
-            self.add_node(addr)
+            node = self.add_node(addr)
+        return node
 
     def register_received_frame(self, frame: Frame, is_test_packet: bool):
         if n := self.get_node(frame.header.source):
