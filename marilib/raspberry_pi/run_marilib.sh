@@ -1,8 +1,17 @@
-# --- create the service to run marilib on boot once the gateway is connected ---
+# === Step 1: Clone or unzip marilib repo ===
+cd /home/pi/marilib
+
+
+# === Step 2: Install marilib ===
+sudo chmod +x install_marilib.sh
+source install_marilib.sh
+
+
+# === Step 3: create the service to run marilib on boot once the gateway is connected ===
 cat <<'EOF' | sudo tee /etc/systemd/system/run_marilib.service
 
 [Unit]
-Description=run marilib on tty2 (only when /dev/ttyACM0 exists)
+Description=run marilib on tty3 (only when /dev/ttyACM0 exists)
 # If the gateway disconnects, stop the service
 BindsTo=dev-ttyACM0.device
 After=dev-ttyACM0.device
@@ -15,17 +24,14 @@ WorkingDirectory=/home/pi/marilib
 ConditionPathExists=/dev/ttyACM0
 ExecStartPre=/usr/bin/test -e /dev/ttyACM0
 
-# attach to tty2 so the TUI is visible
+# attach to tty3 so the TUI is visible
 StandardInput=tty
 StandardOutput=tty
 StandardError=tty
-TTYPath=/dev/tty2
+TTYPath=/dev/tty3
 TTYReset=yes
 TTYVHangup=yes
 TTYVTDisallocate=yes
-
-# auto switch the screen to tty2
-ExecStartPre=/usr/bin/chvt 2
 
 # run basic.py
 ExecStart=/home/pi/marilib/venv/bin/python /home/pi/marilib/examples/basic.py 
@@ -50,6 +56,5 @@ EOF
 
 # reload systemd units and enable
 sudo systemctl daemon-reload
-sudo systemctl disable --now getty@tty2.service
 sudo systemctl enable --now run_marilib.path
 sudo systemctl enable run_marilib.service
