@@ -10,16 +10,15 @@ def on_event(event, event_data):
 
 
 def main():
-    mqtt_interface = MQTTAdapter("localhost", 1883)
-
     mari_cloud = MarilibCloud(
         on_event,
-        mqtt_interface=mqtt_interface,
+        mqtt_interface=MQTTAdapter("localhost", 1883),
+        network_id=0xA0,
     )
 
     while True:
         for node in mari_cloud.nodes:
-            mari_cloud.send_frame(dst=node.address, payload=b"A" * 3)
+            mari_cloud.send_frame(dst=node.address, payload=b"NORMAL_APP_DATA")
         statistics = [
             (f"{node.address:016X}", node.stats.received_rssi_dbm())
             for node in mari_cloud.nodes

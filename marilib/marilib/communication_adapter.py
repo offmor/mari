@@ -65,37 +65,16 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.port = port
         self.network_id = "FFFF"
         self.client = None
+    
+    @classmethod
+    def from_host_port(cls, host_port: str):
+        host, port = host_port.split(":")
+        return cls(host, int(port))
 
-    # TODO: de-duplicate the on_message functions? decide as the integration evolves
+    # ==== public methods ====
 
-    def on_message_edge(self, client, userdata, message):
-        try:
-            data = base64.b64decode(message.payload)
-        except Exception as e:
-            # print the error and a stacktrace
-            print(f"[red]Error decoding MQTT message: {e}[/]")
-            print(f"[red]Message: {message.payload}[/]")
-            return
-        self.on_data_received(data)
-
-    def on_message_cloud(self, client, userdata, message):
-        try:
-            data = base64.b64decode(message.payload)
-        except Exception as e:
-            # print the error and a stacktrace
-            print(f"[red]Error decoding MQTT message: {e}[/]")
-            print(f"[red]Message: {message.payload}[/]")
-            return
-        self.on_data_received(data)
-
-    def on_log(self, client, userdata, paho_log_level, messages):
-        print(messages)
-
-    def on_connect_edge(self, client, userdata, flags, reason_code, properties):
-        self.client.subscribe(f"/mari/{self.network_id}/cloud_to_edge")
-
-    def on_connect_cloud(self, client, userdata, flags, reason_code, properties):
-        self.client.subscribe(f"/mari/{self.network_id}/edge_to_cloud")
+    def is_ready(self) -> bool:
+        return self.client is not None and self.client.is_connected()
 
     def init(self, network_id: str, on_data_received: callable, is_edge: bool):
         if self.client:
@@ -111,9 +90,9 @@ class MQTTAdapter(CommunicationAdapterBase):
             protocol=mqtt.MQTTProtocolVersion.MQTTv5,
         )
         # self.client.tls_set_context(context=None)  # Commented out for plain MQTT
-        self.client.on_log = self.on_log
-        self.client.on_connect = self.on_connect_edge if is_edge else self.on_connect_cloud
-        self.client.on_message = self.on_message_edge if is_edge else self.on_message_cloud
+        self.client.on_log = self._on_log
+        self.client.on_connect = self._on_connect_edge if is_edge else self._on_connect_cloud
+        self.client.on_message = self._on_message_edge if is_edge else self._on_message_cloud
         try:
             self.client.connect(self.host, self.port, 60)
         except Exception as e:
@@ -127,13 +106,72 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client.loop_stop()
 
     def send_data_to_edge(self, data):
+        if not self.is_ready():
+            return
         self.client.publish(
-            f"/mari/{self.network_id}/cloud_to_edge",
+            f"/mari/{self.network_id}/to_edge",
             base64.b64encode(data).decode(),
         )
 
     def send_data_to_cloud(self, data):
+        if not self.is_ready():
+            return
         self.client.publish(
-            f"/mari/{self.network_id}/edge_to_cloud",
+            f"/mari/{self.network_id}/to_cloud",
             base64.b64encode(data).decode(),
         )
+
+    # ==== private methods ====
+
+    # TODO: de-duplicate the _on_message_* functions? decide as the integration evolves
+    def _on_message_edge(self, client, userdata, message):
+        try:
+            data = base64.b64decode(message.payload)
+        except Exception as e:
+            # print the error and a stacktrace
+            print(f"[red]Error decoding MQTT message: {e}[/]")
+            print(f"[red]Message: {message.payload}[/]")
+            return
+        self.on_data_received(data)
+
+    def _on_message_cloud(self, client, userdata, message):
+        try:
+            data = base64.b64decode(message.payload)
+        except Exception as e:
+            # print the error and a stacktrace
+            print(f"[red]Error decoding MQTT message: {e}[/]")
+            print(f"[red]Message: {message.payload}[/]")
+            return
+        self.on_data_received(data)
+
+    def _on_log(self, client, userdata, paho_log_level, messages):
+        # print(messages)
+        pass
+
+    def _on_connect_edge(self, client, userdata, flags, reason_code, properties):
+        self.client.subscribe(f"/mari/{self.network_id}/to_edge")
+
+    def _on_connect_cloud(self, client, userdata, flags, reason_code, properties):
+        self.client.subscribe(f"/mari/{self.network_id}/to_cloud")
+
+
+class MQTTAdapterDummy(MQTTAdapter):
+    """Dummy MQTT adapter, does nothing, for when edge runs only locally, without a cloud."""
+    def __init__(self, host="", port=0):
+        super().__init__(host, port)
+
+    def is_ready(self) -> bool:
+        """Dummy adapter is never ready."""
+        return False
+
+    def init(self, network_id: str, on_data_received: callable, is_edge: bool):
+        pass
+
+    def close(self):
+        pass
+
+    def send_data_to_edge(self, data):
+        pass
+
+    def send_data_to_cloud(self, data):
+        pass

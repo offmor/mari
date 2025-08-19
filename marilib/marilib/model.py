@@ -61,6 +61,18 @@ class EdgeEvent(IntEnum):
 
 
 @dataclass
+class NodeEventInfo(Packet):
+    metadata: list[PacketFieldMetadata] = field(
+        default_factory=lambda: [
+            PacketFieldMetadata(name="gateway_address", length=8),
+            PacketFieldMetadata(name="node_address", length=8),
+        ]
+    )
+    gateway_address: int
+    node_address: int
+
+
+@dataclass
 class NodeStatsReply(Packet):
     """Dataclass representing the statistics packet sent back by a node."""
 
@@ -307,6 +319,10 @@ class MariGateway:
     @property
     def nodes(self) -> list[MariNode]:
         return list(self.node_registry.values())
+
+    @property
+    def nodes_addresses(self) -> list[int]:
+        return list(self.node_registry.keys())
 
     def update(self):
         self.node_registry = {

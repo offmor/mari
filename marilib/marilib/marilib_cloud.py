@@ -2,17 +2,15 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable
-from rich import print
 
-from marilib.latency import LATENCY_PACKET_MAGIC, LatencyTester
+from marilib.latency import LatencyTester
 from marilib.mari_protocol import Frame, Header
 from marilib.model import (
     EdgeEvent,
     GatewayInfo,
     MariGateway,
     MariNode,
-    NodeStatsReply,
-    SCHEDULES,
+    NodeEventInfo,
 )
 from marilib.protocol import ProtocolPayloadParserException
 from marilib.communication_adapter import MQTTAdapter
@@ -27,8 +25,9 @@ class MarilibCloud:
     It is used to communicate with a Mari radio gateway (nRF5340) via MQTT.
     """
 
-    cb_application: Callable[[EdgeEvent, MariNode | Frame], None]
+    cb_application: Callable[[EdgeEvent, MariNode | Frame | GatewayInfo], None]
     mqtt_interface: MQTTAdapter
+    network_id: int
 
     logger: Any | None = None
     gateways: dict[int, MariGateway] = field(default_factory=dict)
@@ -44,7 +43,9 @@ class MarilibCloud:
             "main_file": self.main_file or "unknown",
             "mqtt_host": self.mqtt_interface.host,
             "mqtt_port": self.mqtt_interface.port,
+            "network_id": self.network_id,
         }
+        self.mqtt_interface.init(self.network_id_str, self.on_mqtt_data_received, is_edge=False)
         if self.logger:
             self.logger.log_setup_parameters(self.setup_params)
 
@@ -58,6 +59,10 @@ class MarilibCloud:
     @property
     def nodes(self) -> list[MariNode]:
         return [node for gateway in self.gateways.values() for node in gateway.nodes]
+
+    @property
+    def network_id_str(self) -> str:
+        return f"{self.network_id:04X}"
 
     # def on_mqtt_data_received(self, data: bytes):
     #     """Just forwards the data to the serial interface."""
@@ -82,38 +87,65 @@ class MarilibCloud:
             event_type = data[0]
 
             if event_type == EdgeEvent.NODE_JOINED:
-                gateway = self.gateways.get_node(int.from_bytes(data[1:9], "little"))
-                if not gateway:
-                    gateway = MariGateway(info=GatewayInfo(address=int.from_bytes(data[1:9], "little")))
-                node = gateway.add_node(int.from_bytes(data[9:17], "little"))
-                if self.logger:
-                    self.logger.log_event(node.address, EdgeEvent.NODE_JOINED.name)
-                self.cb_application(EdgeEvent.NODE_JOINED, node)
-            # elif event_type == EdgeEvent.NODE_LEFT:
-            #     if n := self.gateways.remove_node(int.from_bytes(data[1:9], "little")):
-            #         if self.logger:
-            #             self.logger.log_event(n.address, EdgeEvent.NODE_LEFT.name)
-            #         self.cb_application(EdgeEvent.NODE_LEFT, n)
-            # elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
-            #     self.gateways.update_node_liveness(int.from_bytes(data[1:9], "little"))
-            # elif event_type == EdgeEvent.GATEWAY_INFO:
-            #     try:
-            #         self.gateways.set_info(GatewayInfo().from_bytes(data[1:]))
-            #         if self.mqtt_interface:
-            #             self.mqtt_interface.init(self.gateways.info.network_id_str, self.on_mqtt_data_received, is_edge=True)
-            #         self.cb_application(EdgeEvent.GATEWAY_INFO, self.gateways.info)
-            #         if self.logger and self.setup_params:
-            #             self.setup_params["schedule_name"] = (
-            #                 self.gateways.info.schedule_name
-            #             )
-            #             self.setup_params["schedule_id"] = self.gateways.info.schedule_id
-            #             self.logger.log_setup_parameters(self.setup_params)
-            #     except (ValueError, ProtocolPayloadParserException):
-            #         pass
-            # elif event_type == EdgeEvent.NODE_DATA:
-            #     try:
-            #         frame = Frame().from_bytes(data[1:])
-            #         self.gateways.update_node_liveness(frame.header.source)
+                # NOTE: the serial protocol still needs to be changed to also send the gateway address
+                node_info = NodeEventInfo().from_bytes(data[1:])
+                gateway = self.gateways.get(node_info.gateway_address)
+                if gateway:
+                    node = gateway.add_node(node_info.node_address)
+                    if self.logger:
+                        self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_JOINED.name)
+                    self.cb_application(EdgeEvent.NODE_JOINED, (gateway, node))
+
+            elif event_type == EdgeEvent.NODE_LEFT:
+                # FIXME: the serial protocol still needs to be changed to also send the gateway address
+                node_info = NodeEventInfo().from_bytes(data[1:])
+                gateway = self.gateways.get(node_info.gateway_address)
+                if gateway and node_info.node_address in gateway.nodes_addresses:
+                    node = gateway.remove_node(node_info.node_address)
+                    if node and self.logger:
+                        self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_LEFT.name)
+                    self.cb_application(EdgeEvent.NODE_LEFT, (gateway, node))
+
+            elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
+                node_info = NodeEventInfo().from_bytes(data[1:])
+                gateway = self.gateways.get(node_info.gateway_address)
+                if gateway:
+                    gateway.update_node_liveness(node_info.node_address)
+
+            elif event_type == EdgeEvent.GATEWAY_INFO:
+                try:
+                    gateway_info = GatewayInfo().from_bytes(data[1:])
+                    gateway = self.gateways.get(gateway_info.address)
+                    if not gateway:
+                        # TODO: modify and have a timeout-based mechanism to remove the gateway if it disappears
+                        gateway = MariGateway(info=gateway_info)
+                        self.gateways[gateway.info.address] = gateway
+                    else:
+                        gateway.set_info(gateway_info)
+                    self.cb_application(EdgeEvent.GATEWAY_INFO, gateway_info)
+                    if self.logger and self.setup_params:
+                        # TODO: update the logging system to support more than one gateway
+                        pass
+                except (ValueError, ProtocolPayloadParserException):
+                    pass
+
+            elif event_type == EdgeEvent.NODE_DATA:
+                try:
+                    frame = Frame().from_bytes(data[1:])
+                    gateway_address = frame.header.destination
+                    node_address = frame.header.source
+                    gateway = self.gateways.get(gateway_address)
+                    if not gateway:
+                        return
+
+                    node = gateway.get_node(node_address)
+                    if not node:
+                        return
+
+                    gateway.update_node_liveness(node_address)
+                    self.cb_application(EdgeEvent.NODE_DATA, frame)
+
+                    # NOTE: review stats stuff later
             #         payload = frame.payload
             #         node = self.gateways.get_node(frame.header.source)
             #         is_test_or_stats_packet = False
@@ -161,13 +193,14 @@ class MarilibCloud:
             #         if not is_test_or_stats_packet:
             #             self.cb_application(EdgeEvent.NODE_DATA, frame)
 
-            #     except (ValueError, ProtocolPayloadParserException):
-            #         pass
+                except (ValueError, ProtocolPayloadParserException):
+                    pass
 
     def send_frame(self, dst: int, payload: bytes):
-        """Sends a frame to a gateway via mqtt."""
-        assert self.mqtt_interface is not None
-
+        """
+        Sends a frame to a gateway via mqtt.
+        Consists in publishing a message to the /mari/{network_id}/to_edge topic.
+        """
         mari_frame = Frame(Header(destination=dst), payload=payload)
 
-        self.serial_interface.send_data(EdgeEvent.NODE_DATA + mari_frame.to_bytes())
+        self.mqtt_interface.send_data_to_edge(EdgeEvent.NODE_DATA + mari_frame.to_bytes())

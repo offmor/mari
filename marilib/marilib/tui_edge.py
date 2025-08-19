@@ -8,7 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from marilib.marilib import MarilibEdge
+from marilib.marilib_edge import MarilibEdge
 from marilib.model import MariNode, TestState
 
 

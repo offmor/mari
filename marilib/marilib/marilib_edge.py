@@ -15,7 +15,7 @@ from marilib.model import (
     SCHEDULES,
 )
 from marilib.protocol import ProtocolPayloadParserException
-from marilib.communication_adapter import MQTTAdapter, SerialAdapter
+from marilib.communication_adapter import MQTTAdapter, MQTTAdapterDummy, SerialAdapter
 
 LOAD_PACKET_PAYLOAD = b"L"
 
@@ -48,9 +48,15 @@ class MarilibEdge:
             "serial_port": self.serial_interface.port,
         }
         self.serial_interface.init(self.on_serial_data_received)
+        if not self.mqtt_interface:
+            self.mqtt_interface = MQTTAdapterDummy()
         # NOTE: MQTT interface is initialized only when the network_id is known
         if self.logger:
             self.logger.log_setup_parameters(self.setup_params)
+
+    @property
+    def nodes(self) -> list[MariNode]:
+        return self.gateway.nodes
 
     def update(self):
         with self.lock:
@@ -88,18 +94,18 @@ class MarilibEdge:
     def serial_connected(self) -> bool:
         return self.serial_interface is not None
 
-    def on_serial_data_received(self, data: bytes):
+    def handle_serial_data(self, data: bytes):
         with self.lock:
             if len(data) < 1:
-                return
+                return False
             self.last_received_serial_data_ts = datetime.now()
             event_type = data[0]
 
             if event_type == EdgeEvent.NODE_JOINED:
                 node = self.gateway.add_node(int.from_bytes(data[1:9], "little"))
                 if self.logger:
-                    self.logger.log_event(node.address, EdgeEvent.NODE_JOINED.name)
-                self.cb_application(EdgeEvent.NODE_JOINED, node)
+                    self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_JOINED.name)
+                self.cb_application(EdgeEvent.NODE_JOINED, (self.gateway, node))
             elif event_type == EdgeEvent.NODE_LEFT:
                 if n := self.gateway.remove_node(int.from_bytes(data[1:9], "little")):
                     if self.logger:
@@ -110,7 +116,8 @@ class MarilibEdge:
             elif event_type == EdgeEvent.GATEWAY_INFO:
                 try:
                     self.gateway.set_info(GatewayInfo().from_bytes(data[1:]))
-                    if self.mqtt_interface:
+                    if not self.mqtt_interface.is_ready():
+                        # got the network id via gateway info, so we can initialize the MQTT interface
                         self.mqtt_interface.init(self.gateway.info.network_id_str, self.on_mqtt_data_received, is_edge=True)
                     self.cb_application(EdgeEvent.GATEWAY_INFO, self.gateway.info)
                     if self.logger and self.setup_params:
@@ -120,7 +127,7 @@ class MarilibEdge:
                         self.setup_params["schedule_id"] = self.gateway.info.schedule_id
                         self.logger.log_setup_parameters(self.setup_params)
                 except (ValueError, ProtocolPayloadParserException):
-                    pass
+                    return False
             elif event_type == EdgeEvent.NODE_DATA:
                 try:
                     frame = Frame().from_bytes(data[1:])
@@ -173,7 +180,12 @@ class MarilibEdge:
                         self.cb_application(EdgeEvent.NODE_DATA, frame)
 
                 except (ValueError, ProtocolPayloadParserException):
-                    pass
+                    return False
+        return True
+
+    def on_serial_data_received(self, data: bytes):
+        if self.handle_serial_data(data):
+            self.mqtt_interface.send_data_to_cloud(data)
 
     def send_frame(self, dst: int, payload: bytes):
         """Sends a frame to the gateway via serial."""
