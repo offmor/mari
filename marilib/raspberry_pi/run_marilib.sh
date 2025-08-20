@@ -6,8 +6,12 @@ cd /home/pi/marilib
 sudo chmod +x install_marilib.sh
 source install_marilib.sh
 
+# === Step 3: bind the gateway to systemlink port /dev/ttyACM10 ===
+cd raspberry_pi
+sudo chmod +x bind_interface.sh
+source bind_interface.sh
 
-# === Step 3: create the service to run marilib on boot once the gateway is connected ===
+# === Step 4: create the service to run marilib on boot once the gateway is connected ===
 cat <<'EOF' | sudo tee /etc/systemd/system/run_marilib.service
 
 [Unit]
