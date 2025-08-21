@@ -13,25 +13,31 @@ SCHEDULES = {
     # schedule_id: {name, max_nodes, d_down, sf_duration_ms}
     1: {
         "name": "huge",
-        "slots": "BBB" + ("SDUUUUDUUUUU" * 11) + "U" * 2,
-        "max_nodes": 101,
+        "slots": "BBB" + ("UUSDUUUUSDUUU" * 11) + "U" * 0,
+        "max_nodes": 102,
         "d_down": 22,
-        "sf_duration": 223.31,
+        "sf_duration": 256.88,
     },
-    # NOTE: medium schedule still not available in the firmware
-    2: {
+    3: {
+        "name": "big",
+        "slots": "BBB" + ("UUSDUUUUSDUU" * 8) + "U" * 0,
+        "max_nodes": 66,
+        "d_down": 16,
+        "sf_duration": 174.12,
+    },
+    4: {
         "name": "medium",
-        "slots": "BBB" + ("SDUUUUDUUUUU" * 5) + "U" * 4,
-        "max_nodes": 49,
+        "slots": "BBB" + ("UUSDUUUUSDUU" * 5) + "U" * 0,
+        "max_nodes": 44,
         "d_down": 10,
-        "sf_duration": 109.21,
+        "sf_duration": 115.51,
     },
-    5: {
+    6: {
         "name": "tiny",
-        "slots": "BBB" + ("SDUUUUDUUUUU" * 1) + "U" * 2,
-        "max_nodes": 11,
+        "slots": "BBB" + ("UUSDUUUUSDUU" * 1) + "U" * 0,
+        "max_nodes": 10,
         "d_down": 2,
-        "sf_duration": 27.71,
+        "sf_duration": 29.31,
     },
 }
 
