@@ -1,13 +1,12 @@
 # === Step 1: Clone or unzip marilib repo ===
 cd /home/pi/marilib
 
-
 # === Step 2: Install marilib ===
 sudo chmod +x install_marilib.sh
 source install_marilib.sh
 
 # === Step 3: bind the gateway to systemlink port /dev/ttyACM10 ===
-cd raspberry_pi
+cd /home/pi/marilib/raspberry_pi
 sudo chmod +x bind_interface.sh
 source bind_interface.sh
 
