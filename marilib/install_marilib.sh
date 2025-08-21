@@ -6,7 +6,7 @@
 
 # update
 sudo apt update
-sudo apt install -y python3-venv 
+sudo apt install -y python3-venv tmux
 
 
 # install and activate the virtual environment
