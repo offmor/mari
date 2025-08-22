@@ -1,3 +1,9 @@
+## Overview:
+This is the setup for mira gateway
+## Hardware:
+- nRF5340
+- Raspberry Pi 5 
+
 ## Getting Started
 ### Step 1: Flash Operating System to the micro-SD card
 
@@ -45,3 +51,11 @@ To launch the TUI:
 ```
 until tmux has-session -t marilib 2>/dev/null; do sleep 0.2; done; tmux attach -t marilib
 ```
+
+### NOTES:
+- Do not plug the nRF while the Raspberry Pi (rPi) is on, always plug in
+when the rPi is turned off.
+- Do not unplug the nRF directly, you need to eject it or remove it when the 
+Raspberry Pi is off or you will cause damage to the rPi and unpredicted 
+behavior when running the TUI (it will crash).
+
