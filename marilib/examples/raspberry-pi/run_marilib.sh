@@ -39,7 +39,7 @@ RestartSec=2
 WantedBy=multi-user.target
 EOF
 
-# === Step 4:  create a path unit that triggers when the gateway device appears ===
+# === Step 5:  create a path unit that triggers when the gateway device appears ===
 cat <<'EOF' | sudo tee /etc/systemd/system/run_marilib.path
 [Unit]
 Description=Launch marilib when the gateway appears on /dev/ttyACM10
