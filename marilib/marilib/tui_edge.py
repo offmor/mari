@@ -37,22 +37,23 @@ class MariLibTUIEdge:
 
     def render(self, mari: MarilibEdge):
         """Render the TUI layout."""
-        if datetime.now() - self.last_render_time < timedelta(
-            seconds=self.re_render_max_freq
-        ):
-            return
-        self.last_render_time = datetime.now()
-        layout = Layout()
-        layout.split(
-            Layout(self.create_header_panel(mari), size=12),
-            Layout(self.create_nodes_panel(mari)),
-        )
-        self.live.update(layout, refresh=True)
+        with mari.lock:
+            if datetime.now() - self.last_render_time < timedelta(
+                seconds=self.re_render_max_freq
+            ):
+                return
+            self.last_render_time = datetime.now()
+            layout = Layout()
+            layout.split(
+                Layout(self.create_header_panel(mari), size=12),
+                Layout(self.create_nodes_panel(mari)),
+            )
+            self.live.update(layout, refresh=True)
 
     def create_header_panel(self, mari: MarilibEdge) -> Panel:
         """Create the header panel with gateway and network stats."""
         status = Text()
-        status.append("MarilibEdge Edge is ", style="bold")
+        status.append("MarilibEdge is ", style="bold")
         status.append(
             "connected" if mari.serial_connected else "disconnected",
             style="bold green" if mari.serial_connected else "bold red",

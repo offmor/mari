@@ -160,6 +160,7 @@ class MarilibCloud(MarilibBase):
                         return
 
                     gateway.update_node_liveness(node_address)
+                    gateway.register_received_frame(frame, is_test_packet=False)
                     self.cb_application(EdgeEvent.NODE_DATA, frame)
                 except (ValueError, ProtocolPayloadParserException):
                     pass

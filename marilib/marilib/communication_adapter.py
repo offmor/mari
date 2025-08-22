@@ -69,9 +69,9 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.on_data_received = None
 
     @classmethod
-    def from_host_port(cls, host_port: str):
+    def from_host_port(cls, host_port: str, is_edge: bool):
         host, port = host_port.split(":")
-        return cls(host, int(port))
+        return cls(host, int(port), is_edge)
 
     # ==== public methods ====
 

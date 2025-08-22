@@ -98,7 +98,7 @@ class MarilibEdge(MarilibBase):
 
     @property
     def uses_mqtt(self) -> bool:
-        return isinstance(self.mqtt_interface, MQTTAdapter)
+        return not isinstance(self.mqtt_interface, MQTTAdapterDummy)
 
     @property
     def serial_connected(self) -> bool:
@@ -181,6 +181,7 @@ class MarilibEdge(MarilibBase):
                 frame = Frame().from_bytes(data[1:])
                 with self.lock:
                     self.gateway.update_node_liveness(frame.header.source)
+                    self.gateway.register_received_frame(frame, is_test_packet=False)
                 return True, event_type, frame
             except (ValueError, ProtocolPayloadParserException):
                 return False, EdgeEvent.UNKNOWN, None
@@ -190,7 +191,7 @@ class MarilibEdge(MarilibBase):
         res, event_type, event_data = self.handle_serial_data(data)
         if res:
             if self.logger and event_type in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT]:
-                self.logger.log_event(event_data.gateway_address, event_data.address, event_type.name)
+                self.logger.log_event(self.gateway.info.address, event_data.address, event_type.name)
             if event_type == EdgeEvent.GATEWAY_INFO:
                 # when the first GATEWAY_INFO is received, this will cause the MQTT interface to be initialized
                 self.mqtt_interface.update(event_data.network_id_str, self.on_mqtt_data_received)

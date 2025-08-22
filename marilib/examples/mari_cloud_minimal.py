@@ -30,7 +30,7 @@ def main():
             for node in mari_cloud.nodes
         ]
         print(f"Network statistics: {statistics}")
-        time.sleep(3)
+        time.sleep(1)
 
 
 if __name__ == "__main__":
