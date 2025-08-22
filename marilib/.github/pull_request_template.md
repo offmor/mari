@@ -4,12 +4,10 @@
 
 ---
 
-## Testing of MariEdge / MariCloud (if applicable)
+## Testing of Node / Gateway (if applicable)
 
-- [ ] I tested this change with **at least 10 connected devices** 
-  - Number of devices tested: `___`
-- [ ] I let it run for at least **1 minute**  
-  - Duration tested: `___`
+- I tested this change with `___` nodes and `___` gateways.
+- I let it run for the following amount of time: `___`
 
 ---
 
