@@ -78,5 +78,5 @@ source run_marilib.sh
 
 To launch the TUI:
 ```
-tmux attach -t marilib
+until tmux has-session -t marilib 2>/dev/null; do sleep 0.2; done; tmux attach -t marilib
 ```

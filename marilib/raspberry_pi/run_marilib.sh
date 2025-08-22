@@ -28,8 +28,8 @@ ConditionPathExists=/dev/ttyACM10
 ExecStartPre=/usr/bin/test -e /dev/ttyACM10
 
 # run basic.py
-ExecStart=/usr/bin/tmux new-session -A -s marilib -d  "/home/pi/marilib/venv/bin/python /home/pi/marilib/examples/basic.py --p /dev/ttyACM10"
-ExecStop=/usr/bin/tmux kill-session -t marilib
+ExecStart=/usr/bin/tmux new-session -s marilib -d  "/home/pi/marilib/venv/bin/python /home/pi/marilib/examples/basic.py -p /dev/ttyACM10"
+ExecStop=/usr/bin/tmux kill-session -t marilib 
 Type=forking
 
 Restart=on-failure
