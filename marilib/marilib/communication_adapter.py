@@ -46,7 +46,7 @@ class SerialAdapter(CommunicationAdapterBase):
     def init(self, on_data_received: callable):
         self.on_data_received = on_data_received
         self.serial = SerialInterface(self.port, self.baudrate, self.on_byte_received)
-        print(f"[yellow]Connected to gateway on port {self.port}[/]")
+        print(f"[yellow]Connected to serial port {self.port} at {self.baudrate} baud[/]")
 
     def close(self):
         print("[yellow]Disconnect from gateway...[/]")
@@ -63,10 +63,10 @@ class MQTTAdapter(CommunicationAdapterBase):
     def __init__(self, host, port, is_edge: bool):
         self.host = host
         self.port = port
+        self.is_edge = is_edge
         self.network_id = None
         self.client = None
         self.on_data_received = None
-        self.is_edge = is_edge
 
     @classmethod
     def from_host_port(cls, host_port: str):
@@ -86,10 +86,14 @@ class MQTTAdapter(CommunicationAdapterBase):
 
     def update(self, network_id: str, on_data_received: callable):
         if self.network_id is None:
+            # might have been set by set_network_id
             self.network_id = network_id
         else:
             # TODO: handle the case when the network_id changes
             pass
+        if self.network_id is None:
+            # wait a bit, network_id not set yet
+            return
         if self.on_data_received is None:
             self.set_on_data_received(on_data_received)
         if not self.is_ready():
@@ -98,6 +102,9 @@ class MQTTAdapter(CommunicationAdapterBase):
     def init(self):
         if self.client:
             # already initialized, do nothing
+            return
+        if self.network_id is None:
+            # network_id not set yet
             return
 
         self.client = mqtt.Client(
@@ -110,6 +117,7 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client.on_message = self._on_message_edge if self.is_edge else self._on_message_cloud
         try:
             self.client.connect(self.host, self.port, 60)
+            print(f"[yellow]Connected to MQTT broker on {self.host}:{self.port}[/]")
         except Exception as e:
             print(f"[red]Error connecting to MQTT broker: {e}[/]")
             print(f"[red]Host: {self.host}, Port: {self.port}[/]")
@@ -165,21 +173,23 @@ class MQTTAdapter(CommunicationAdapterBase):
 
     def _on_connect_edge(self, client, userdata, flags, reason_code, properties):
         self.client.subscribe(f"/mari/{self.network_id}/to_edge")
+        print(f"[yellow]Subscribed to /mari/{self.network_id}/to_edge[/]")
 
     def _on_connect_cloud(self, client, userdata, flags, reason_code, properties):
         self.client.subscribe(f"/mari/{self.network_id}/to_cloud")
+        print(f"[yellow]Subscribed to /mari/{self.network_id}/to_cloud[/]")
 
 
 class MQTTAdapterDummy(MQTTAdapter):
     """Dummy MQTT adapter, does nothing, for when edge runs only locally, without a cloud."""
-    def __init__(self, host="", port=0):
-        super().__init__(host, port)
+    def __init__(self, host="", port=0, is_edge=True):
+        super().__init__(host, port, is_edge)
 
     def is_ready(self) -> bool:
         """Dummy adapter is never ready."""
         return False
 
-    def init(self, network_id: str, on_data_received: callable, is_edge: bool):
+    def init(self):
         pass
 
     def close(self):

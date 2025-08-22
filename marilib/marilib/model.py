@@ -41,6 +41,8 @@ SCHEDULES = {
     },
 }
 
+MARI_TIMEOUT_NODE_IS_ALIVE = 1  # seconds
+
 
 @dataclass
 class TestState:
@@ -238,7 +240,7 @@ class MariNode:
 
     @property
     def is_alive(self) -> bool:
-        return datetime.now() - self.last_seen < timedelta(seconds=10)
+        return datetime.now() - self.last_seen < timedelta(seconds=MARI_TIMEOUT_NODE_IS_ALIVE)
 
     def register_received_frame(self, frame: Frame, is_test_packet: bool):
         self.stats.add_received(frame, is_test_packet)
@@ -342,6 +344,7 @@ class MariGateway:
         return list(self.node_registry.keys())
 
     def update(self):
+        """Recurrent bookkeeping. Don't forget to call this periodically on your main loop."""
         self.node_registry = {
             addr: node for addr, node in self.node_registry.items() if node.is_alive
         }

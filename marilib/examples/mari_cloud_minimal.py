@@ -20,7 +20,9 @@ def main():
     )
 
     while True:
+        mari_cloud.update()
         for node in mari_cloud.nodes:
+            print(f"Sending frame to {node.address:016X}")
             mari_cloud.send_frame(dst=node.address, payload=b"NORMAL_APP_DATA")
         statistics = [
             (f"{node.address:016X}", node.stats.received_rssi_dbm())

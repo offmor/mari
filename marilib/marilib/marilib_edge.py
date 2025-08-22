@@ -16,12 +16,13 @@ from marilib.model import (
 )
 from marilib.protocol import ProtocolPayloadParserException
 from marilib.communication_adapter import MQTTAdapter, MQTTAdapterDummy, SerialAdapter
+from marilib.marilib import MarilibBase
 
 LOAD_PACKET_PAYLOAD = b"L"
 
 
 @dataclass
-class MarilibEdge:
+class MarilibEdge(MarilibBase):
     """
     The MarilibEdge class runs in either a computer or a raspberry pi.
     It is used to communicate with:
@@ -47,22 +48,61 @@ class MarilibEdge:
             "main_file": self.main_file or "unknown",
             "serial_port": self.serial_interface.port,
         }
-        self.serial_interface.init(self.on_serial_data_received)
-        if not self.mqtt_interface:
+        if self.mqtt_interface is None:
             self.mqtt_interface = MQTTAdapterDummy()
+        self.serial_interface.init(self.on_serial_data_received)
         # NOTE: MQTT interface will only be initialized when the network_id is known
         if self.logger:
             self.logger.log_setup_parameters(self.setup_params)
 
-    @property
-    def nodes(self) -> list[MariNode]:
-        return self.gateway.nodes
+    # ============================ MarilibBase methods =========================
 
     def update(self):
         with self.lock:
             self.gateway.update()
             if self.logger and self.logger.active:
                 self.logger.log_periodic_metrics(self.gateway, self.gateway.nodes)
+
+    @property
+    def nodes(self) -> list[MariNode]:
+        return self.gateway.nodes
+
+    def add_node(self, address: int) -> MariNode:
+        with self.lock:
+            return self.gateway.add_node(address)
+
+    def remove_node(self, address: int) -> MariNode | None:
+        with self.lock:
+            return self.gateway.remove_node(address)
+
+    def send_frame(self, dst: int, payload: bytes):
+        """Sends a frame to the gateway via serial."""
+        assert self.serial_interface is not None
+
+        mari_frame = Frame(Header(destination=dst), payload=payload)
+        is_test = self._is_test_packet(payload)
+
+        with self.lock:
+            # Only register statistics for normal data packets, not for test packets.
+            self.gateway.register_sent_frame(mari_frame, is_test)
+            if dst == MARI_BROADCAST_ADDRESS:
+                for n in self.gateway.nodes:
+                    n.register_sent_frame(mari_frame, is_test)
+            elif n := self.gateway.get_node(dst):
+                n.register_sent_frame(mari_frame, is_test)
+
+        # FIXME: instead of prefixing with a magic 0x01 byte, we should use EdgeEvent.NODE_DATA
+        self.serial_interface.send_data(b"\x01" + mari_frame.to_bytes())
+
+    # ============================ MarilibEdge methods =========================
+
+    @property
+    def uses_mqtt(self) -> bool:
+        return isinstance(self.mqtt_interface, MQTTAdapter)
+
+    @property
+    def serial_connected(self) -> bool:
+        return self.serial_interface is not None
 
     def get_max_downlink_rate(self) -> float:
         """Calculate the max downlink packets/sec for a given schedule_id."""
@@ -74,6 +114,8 @@ class MarilibEdge:
         if sf_duration_ms == 0:
             return 0.0
         return d_down / (sf_duration_ms / 1000.0)
+
+    # ============================ Callbacks ===================================
 
     def on_mqtt_data_received(self, data: bytes):
         """Just forwards the data to the serial interface."""
@@ -89,18 +131,6 @@ class MarilibEdge:
         except (ValueError, ProtocolPayloadParserException) as exc:
             print(f"[red]Error parsing frame: {exc}[/]")
             return
-
-    @property
-    def serial_connected(self) -> bool:
-        return self.serial_interface is not None
-
-    def add_node(self, address: int) -> MariNode:
-        with self.lock:
-            return self.gateway.add_node(address)
-
-    def remove_node(self, address: int) -> MariNode | None:
-        with self.lock:
-            return self.gateway.remove_node(address)
 
     def handle_serial_data(self, data: bytes) -> tuple[bool, EdgeEvent, Any]:
         """
@@ -176,24 +206,7 @@ class MarilibEdge:
         data = EdgeEvent.to_bytes(event_type) + event_data.to_bytes()
         self.mqtt_interface.send_data_to_cloud(data)
 
-    def send_frame(self, dst: int, payload: bytes):
-        """Sends a frame to the gateway via serial."""
-        assert self.serial_interface is not None
-
-        mari_frame = Frame(Header(destination=dst), payload=payload)
-        is_test = self._is_test_packet(payload)
-
-        with self.lock:
-            # Only register statistics for normal data packets, not for test packets.
-            self.gateway.register_sent_frame(mari_frame, is_test)
-            if dst == MARI_BROADCAST_ADDRESS:
-                for n in self.gateway.nodes:
-                    n.register_sent_frame(mari_frame, is_test)
-            elif n := self.gateway.get_node(dst):
-                n.register_sent_frame(mari_frame, is_test)
-
-        # FIXME: instead of prefixing with a magic 0x01 byte, we should use EdgeEvent.NODE_DATA
-        self.serial_interface.send_data(b"\x01" + mari_frame.to_bytes())
+    # ============================ Utility methods =============================
 
     def latency_test_enable(self):
         if self.latency_tester is None:
@@ -204,6 +217,8 @@ class MarilibEdge:
         if self.latency_tester is not None:
             self.latency_tester.stop()
             self.latency_tester = None
+
+    # ============================ Private methods =============================
 
     def _is_test_packet(self, payload: bytes) -> bool:
         """Determines if a packet is for testing purposes (load or latency)."""

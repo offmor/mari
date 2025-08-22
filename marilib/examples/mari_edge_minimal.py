@@ -20,8 +20,12 @@ def main():
     )
 
     while True:
-        # for node in mari_edge.nodes:
-        #     mari_edge.send_frame(dst=node.address, payload=b"NORMAL_APP_DATA")
+        mari_edge.update()
+        if not mari_edge.uses_mqtt:
+            # only send frames if not using MQTT (otherwise they will be sent from the cloud)
+            for node in mari_edge.nodes:
+                mari_edge.send_frame(dst=node.address, payload=b"NORMAL_APP_DATA")
+                print(",", end="", flush=True)
         statistics = [
             (f"{node.address:016X}", node.stats.received_rssi_dbm())
             for node in mari_edge.nodes

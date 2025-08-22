@@ -14,12 +14,13 @@ from marilib.model import (
 )
 from marilib.protocol import ProtocolPayloadParserException
 from marilib.communication_adapter import MQTTAdapter
+from marilib.marilib import MarilibBase
 
 LOAD_PACKET_PAYLOAD = b"L"
 
 
 @dataclass
-class MarilibCloud:
+class MarilibCloud(MarilibBase):
     """
     The MarilibCloud class runs in a computer.
     It is used to communicate with a Mari radio gateway (nRF5340) via MQTT.
@@ -51,35 +52,40 @@ class MarilibCloud:
         if self.logger:
             self.logger.log_setup_parameters(self.setup_params)
 
-    def update(self):
-        pass
+    # ============================ MarilibBase methods =========================
 
-    def get_max_downlink_rate(self) -> float:
-        """Calculate the max downlink packets/sec for a given schedule_id."""
-        raise NotImplementedError("Not implemented")
+    def update(self):
+        """Recurrent bookkeeping. Don't forget to call this periodically on your main loop."""
+        for gateway in self.gateways.values():
+            gateway.update()
+            # TODO: call the logger here and log the gateway stats (requires modifications in the logger class)
 
     @property
     def nodes(self) -> list[MariNode]:
         return [node for gateway in self.gateways.values() for node in gateway.nodes]
 
+    def add_node(self, address: int) -> MariNode:
+        """Adds a node to the network."""
+
+    def remove_node(self, address: int) -> MariNode | None:
+        """Removes a node from the network."""
+
+    def send_frame(self, dst: int, payload: bytes):
+        """
+        Sends a frame to a gateway via MQTT.
+        Consists in publishing a message to the /mari/{network_id}/to_edge topic.
+        """
+        mari_frame = Frame(Header(destination=dst), payload=payload)
+
+        self.mqtt_interface.send_data_to_edge(EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes())
+
+    # ============================ MarilibCloud methods =========================
+
     @property
     def network_id_str(self) -> str:
         return f"{self.network_id:04X}"
 
-    # def on_mqtt_data_received(self, data: bytes):
-    #     """Just forwards the data to the serial interface."""
-    #     try:
-    #         event_type = EdgeEvent(data[0])
-    #         if event_type == EdgeEvent.NODE_DATA:
-    #             frame = Frame().from_bytes(data[1:])
-    #             # print(f"Forwarding frame of length {len(frame.payload)} to dst = {frame.header.destination:016X}, payload = {frame.payload.hex()}")
-    #             # reuse the send_frame function to send the frame to the gateway
-    #             self.send_frame(frame.header.destination, frame.payload)
-    #         else:
-    #             print(f"Received unknown event type: {event_type}")
-    #     except (ValueError, ProtocolPayloadParserException) as exc:
-    #         print(f"[red]Error parsing frame: {exc}[/]")
-    #         return
+    # ============================ Callbacks ===================================
 
     def on_mqtt_data_received(self, data: bytes):
         with self.lock:
@@ -146,63 +152,5 @@ class MarilibCloud:
 
                     gateway.update_node_liveness(node_address)
                     self.cb_application(EdgeEvent.NODE_DATA, frame)
-
-                    # NOTE: review stats stuff later
-            #         payload = frame.payload
-            #         node = self.gateways.get_node(frame.header.source)
-            #         is_test_or_stats_packet = False
-
-            #         if payload.startswith(LATENCY_PACKET_MAGIC):
-            #             is_test_or_stats_packet = True
-            #             if self.latency_tester:
-            #                 self.latency_tester.handle_response(frame)
-
-            #         elif len(payload) == 8:
-            #             try:
-            #                 stats_reply = NodeStatsReply().from_bytes(payload)
-
-            #                 if node:
-            #                     if not hasattr(node, "stats_reply_count"):
-            #                         node.stats_reply_count = 0
-            #                     node.stats_reply_count += 1
-
-            #                     node.last_reported_rx_count = stats_reply.rx_app_packets
-            #                     node.last_reported_tx_count = stats_reply.tx_app_packets
-
-            #                     # Calculate PDR Downlink
-            #                     if node.stats.cumulative_sent_non_test > 0:
-            #                         pdr = (
-            #                             node.last_reported_rx_count
-            #                             / node.stats.cumulative_sent_non_test
-            #                         )
-            #                         node.pdr_downlink = min(pdr, 1.0)
-            #                     else:
-            #                         node.pdr_downlink = 1.0
-
-            #                     # Calculate PDR Uplink
-            #                     if node.last_reported_tx_count > 0:
-            #                         pdr = (
-            #                             node.stats_reply_count
-            #                             / node.last_reported_tx_count
-            #                         )
-            #                         node.pdr_uplink = min(pdr, 1.0)
-
-            #             except (ValueError, ProtocolPayloadParserException):
-            #                 pass
-
-            #         self.gateways.register_received_frame(frame, is_test_or_stats_packet)
-
-            #         if not is_test_or_stats_packet:
-            #             self.cb_application(EdgeEvent.NODE_DATA, frame)
-
                 except (ValueError, ProtocolPayloadParserException):
                     pass
-
-    def send_frame(self, dst: int, payload: bytes):
-        """
-        Sends a frame to a gateway via mqtt.
-        Consists in publishing a message to the /mari/{network_id}/to_edge topic.
-        """
-        mari_frame = Frame(Header(destination=dst), payload=payload)
-
-        self.mqtt_interface.send_data_to_edge(EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes())
