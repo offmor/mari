@@ -67,7 +67,7 @@ class MarilibEdge(MarilibBase):
     def nodes(self) -> list[MariNode]:
         return self.gateway.nodes
 
-    def add_node(self, address: int) -> MariNode:
+    def add_node(self, address: int, gateway_address: int = None) -> MariNode | None:
         with self.lock:
             return self.gateway.add_node(address)
 
@@ -202,6 +202,7 @@ class MarilibEdge(MarilibBase):
 
     def send_data_to_cloud(self, event_type: EdgeEvent, event_data: NodeInfoEdge | GatewayInfo | Frame):
         if event_type in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT, EdgeEvent.NODE_KEEP_ALIVE]:
+            # the cloud needs to know which gateway the node belongs to
             event_data = event_data.to_cloud(self.gateway.info.address)
         data = EdgeEvent.to_bytes(event_type) + event_data.to_bytes()
         self.mqtt_interface.send_data_to_cloud(data)

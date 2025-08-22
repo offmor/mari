@@ -56,19 +56,35 @@ class MarilibCloud(MarilibBase):
 
     def update(self):
         """Recurrent bookkeeping. Don't forget to call this periodically on your main loop."""
-        for gateway in self.gateways.values():
-            gateway.update()
-            # TODO: call the logger here and log the gateway stats (requires modifications in the logger class)
+        with self.lock:
+            # remove dead gateways
+            self.gateways = {
+                addr: gateway for addr, gateway in self.gateways.items() if gateway.is_alive
+            }
+            # update each gateway
+            for gateway in self.gateways.values():
+                gateway.update()
+                # TODO: call the logger here and log the gateway stats (requires modifications in the logger class)
 
     @property
     def nodes(self) -> list[MariNode]:
         return [node for gateway in self.gateways.values() for node in gateway.nodes]
 
-    def add_node(self, address: int) -> MariNode:
-        """Adds a node to the network."""
+    def add_node(self, address: int, gateway_address: int = None) -> MariNode | None:
+        with self.lock:
+            gateway = self.gateways.get(gateway_address)
+            if gateway:
+                node = gateway.add_node(address)
+                return node
+        return None
 
-    def remove_node(self, address: int) -> MariNode | None:
-        """Removes a node from the network."""
+    def remove_node(self, address: int, gateway_address: int = None) -> MariNode | None:
+        with self.lock:
+            gateway = self.gateways.get(gateway_address)
+            if gateway:
+                node = gateway.remove_node(address)
+                return node
+        return None
 
     def send_frame(self, dst: int, payload: bytes):
         """
@@ -95,21 +111,15 @@ class MarilibCloud(MarilibBase):
             event_type = data[0]
 
             if event_type == EdgeEvent.NODE_JOINED:
-                # NOTE: the serial protocol still needs to be changed to also send the gateway address
                 node_info = NodeInfoCloud().from_bytes(data[1:])
-                gateway = self.gateways.get(node_info.gateway_address)
-                if gateway:
-                    node = gateway.add_node(node_info.address)
+                if node := self.add_node(node_info.address, node_info.gateway_address):
                     if self.logger:
                         self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_JOINED.name)
                     self.cb_application(EdgeEvent.NODE_JOINED, (gateway, node))
 
             elif event_type == EdgeEvent.NODE_LEFT:
-                # FIXME: the serial protocol still needs to be changed to also send the gateway address
                 node_info = NodeInfoCloud().from_bytes(data[1:])
-                gateway = self.gateways.get(node_info.gateway_address)
-                if gateway and node_info.address in gateway.nodes_addresses:
-                    node = gateway.remove_node(node_info.address)
+                if node := self.remove_node(node_info.address, node_info.gateway_address):
                     if node and self.logger:
                         self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_LEFT.name)
                     self.cb_application(EdgeEvent.NODE_LEFT, (gateway, node))
@@ -125,7 +135,6 @@ class MarilibCloud(MarilibBase):
                     gateway_info = GatewayInfo().from_bytes(data[1:])
                     gateway = self.gateways.get(gateway_info.address)
                     if not gateway:
-                        # TODO: modify and have a timeout-based mechanism to remove the gateway if it disappears
                         gateway = MariGateway(info=gateway_info)
                         self.gateways[gateway.info.address] = gateway
                     else:

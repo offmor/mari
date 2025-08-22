@@ -15,7 +15,7 @@ class MarilibBase(ABC):
         """Returns all nodes in the network."""
 
     @abstractmethod
-    def add_node(self, address: int) -> MariNode:
+    def add_node(self, address: int, gateway_address: int = None) -> MariNode | None:
         """Adds a node to the network."""
 
     @abstractmethod

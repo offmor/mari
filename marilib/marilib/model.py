@@ -41,7 +41,8 @@ SCHEDULES = {
     },
 }
 
-MARI_TIMEOUT_NODE_IS_ALIVE = 1  # seconds
+MARI_TIMEOUT_NODE_IS_ALIVE = 3  # seconds
+MARI_TIMEOUT_GATEWAY_IS_ALIVE = 3  # seconds
 
 
 @dataclass
@@ -334,6 +335,10 @@ class MariGateway:
     node_registry: dict[int, MariNode] = field(default_factory=dict)
     stats: FrameStats = field(default_factory=FrameStats)
     latency_stats: LatencyStats = field(default_factory=LatencyStats)
+    last_seen: datetime = field(default_factory=lambda: datetime.now())
+
+    def __post_init__(self):
+        self.last_seen = datetime.now()
 
     @property
     def nodes(self) -> list[MariNode]:
@@ -343,6 +348,10 @@ class MariGateway:
     def nodes_addresses(self) -> list[int]:
         return list(self.node_registry.keys())
 
+    @property
+    def is_alive(self) -> bool:
+        return datetime.now() - self.last_seen < timedelta(seconds=MARI_TIMEOUT_GATEWAY_IS_ALIVE)
+
     def update(self):
         """Recurrent bookkeeping. Don't forget to call this periodically on your main loop."""
         self.node_registry = {
@@ -351,20 +360,21 @@ class MariGateway:
 
     def set_info(self, info: GatewayInfo):
         self.info = info
+        self.last_seen = datetime.now()
 
-    def get_node(self, a: int) -> MariNode | None:
-        return self.node_registry.get(a)
+    def get_node(self, addr: int) -> MariNode | None:
+        return self.node_registry.get(addr)
 
-    def add_node(self, a: int) -> MariNode:
-        if node := self.get_node(a):
+    def add_node(self, addr: int) -> MariNode:
+        if node := self.get_node(addr):
             node.last_seen = datetime.now()
             return node
-        node = MariNode(a, self.info.address)
-        self.node_registry[a] = node
+        node = MariNode(addr, self.info.address)
+        self.node_registry[addr] = node
         return node
 
-    def remove_node(self, a: int) -> MariNode | None:
-        return self.node_registry.pop(a, None)
+    def remove_node(self, addr: int) -> MariNode | None:
+        return self.node_registry.pop(addr, None)
 
     def update_node_liveness(self, addr: int) -> MariNode:
         node = self.get_node(addr)
