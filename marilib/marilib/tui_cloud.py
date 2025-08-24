@@ -72,60 +72,71 @@ class MarilibTUICloud(MarilibTUI):
 
         return Panel(status, title="[bold]MarilibCloud Status", border_style="blue")
 
-    def create_gateways_table(self, gateways: list[MariGateway], title="") -> Table:
-        """Create a table displaying information about connected gateways."""
+    def create_gateway_table(self, gateway: MariGateway) -> Table:
+        """Create a table for a single gateway with 3 rows and 2 columns."""
         table = Table(
-            show_header=True,
-            header_style="bold cyan",
+            show_header=False,
             border_style="blue",
             padding=(0, 1),
-            title=title,
         )
-        table.add_column("Gateway", style="cyan")
-        table.add_column("Nodes", justify="center")
-        table.add_column("Schedule")
-        table.add_column("Schedule Usage")
+        table.add_column("Field", style="bold", width=18, justify="right")
+        table.add_column("Value")
 
-        for gateway in gateways:
-            gateway_addr = f"0x{gateway.info.address:016X}"
-            node_count = f"{len(gateway.nodes)} / {gateway.info.schedule_uplink_cells}"
-            schedule_info = f"#{gateway.info.schedule_id} {gateway.info.schedule_name}"
-            schedule_repr = gateway.info.repr_schedule_cells_with_colors()
+        # Row 1: Gateway info
+        node_count = f"{len(gateway.nodes)} / {gateway.info.schedule_uplink_cells}"
+        schedule_info = f"#{gateway.info.schedule_id} {gateway.info.schedule_name}"
+        table.add_row(
+            f"[bold cyan]0x{gateway.info.address:016X}[/bold cyan]",
+            f"Nodes: {node_count}  |  Schedule: {schedule_info}"
+        )
 
-            table.add_row(
-                gateway_addr,
-                node_count,
-                schedule_info,
-                schedule_repr,
-            )
+        # Row 2: Schedule usage
+        schedule_repr = gateway.info.repr_schedule_cells_with_colors()
+        table.add_row(
+            "[bold cyan]Live schedule[/bold cyan]",
+            schedule_repr
+        )
+
+        # Row 3: Node list
+        if gateway.nodes:
+            node_addresses = [f"0x{node.address:016X}" for node in gateway.nodes]
+            node_display = " ".join(node_addresses)
+        else:
+            node_display = "—"
+        
+        table.add_row(
+            "[bold cyan]Nodes[/bold cyan]",
+            node_display
+        )
+
         return table
 
     def create_gateways_panel(self, mari: MarilibCloud) -> Panel:
-        """Create the panel that contains the gateways table."""
+        """Create the panel that contains individual gateway tables."""
         gateways = list(mari.gateways.values())
-        max_rows = self.get_max_rows()
-        max_displayable_gateways = self.max_tables * max_rows
+        
+        if not gateways:
+            empty_table = Table(title="No Gateways Connected")
+            return Panel(
+                empty_table,
+                title="[bold]Connected Gateways",
+                border_style="blue",
+            )
+
+        # Create individual tables for each gateway
+        gateway_tables = []
+        max_displayable_gateways = self.max_tables
         gateways_to_display = gateways[:max_displayable_gateways]
         remaining_gateways = max(0, len(gateways) - max_displayable_gateways)
 
-        tables = []
-        current_table_gateways = []
+        for gateway in gateways_to_display:
+            gateway_tables.append(self.create_gateway_table(gateway))
 
-        for i, gateway in enumerate(gateways_to_display):
-            current_table_gateways.append(gateway)
-            if len(current_table_gateways) == max_rows or i == len(gateways_to_display) - 1:
-                title = f"Gateways {i - len(current_table_gateways) + 2}-{i + 1}"
-                tables.append(self.create_gateways_table(current_table_gateways, title))
-                current_table_gateways = []
-                if len(tables) >= self.max_tables:
-                    break
-
-        if len(tables) > 1:
-            content = Columns(tables, equal=True, expand=True)
-        elif tables:
-            content = tables[0]
+        # Arrange tables in columns
+        if len(gateway_tables) > 1:
+            content = Columns(gateway_tables, equal=True, expand=True)
         else:
-            content = Table(title="No Gateways Connected")
+            content = gateway_tables[0]
 
         if remaining_gateways > 0:
             panel_content = Group(
