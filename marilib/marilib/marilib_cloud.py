@@ -103,64 +103,77 @@ class MarilibCloud(MarilibBase):
 
     # ============================ Callbacks ===================================
 
-    def on_mqtt_data_received(self, data: bytes):
-        with self.lock:
-            if len(data) < 1:
-                return
-            self.last_received_mqtt_data_ts = datetime.now()
-            event_type = data[0]
+    def handle_mqtt_data(self, data: bytes) -> tuple[bool, EdgeEvent, Any]:
+        """
+        Handles the MQTT data received from the MQTT broker:
+        - parses the event
+        - updates node or gateway information
+        - returns the event type and data (if any)
+        """
 
+        if len(data) < 1:
+            return False, EdgeEvent.UNKNOWN, None
+
+        self.last_received_mqtt_data_ts = datetime.now()
+
+        try:
+            event_type = EdgeEvent(data[0])
+        except ValueError:
+            return False, EdgeEvent.UNKNOWN, None
+
+        try:
             if event_type == EdgeEvent.NODE_JOINED:
                 node_info = NodeInfoCloud().from_bytes(data[1:])
                 if node := self.add_node(node_info.address, node_info.gateway_address):
-                    if self.logger:
-                        self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_JOINED.name)
-                    self.cb_application(EdgeEvent.NODE_JOINED, (gateway, node))
+                    return True, EdgeEvent.NODE_JOINED, node_info
 
             elif event_type == EdgeEvent.NODE_LEFT:
                 node_info = NodeInfoCloud().from_bytes(data[1:])
                 if node := self.remove_node(node_info.address, node_info.gateway_address):
-                    if node and self.logger:
-                        self.logger.log_event(node.gateway_address, node.address, EdgeEvent.NODE_LEFT.name)
-                    self.cb_application(EdgeEvent.NODE_LEFT, (gateway, node))
+                    return True, EdgeEvent.NODE_LEFT, node_info
 
             elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
                 node_info = NodeInfoCloud().from_bytes(data[1:])
                 gateway = self.gateways.get(node_info.gateway_address)
                 if gateway:
                     gateway.update_node_liveness(node_info.address)
+                    return True, EdgeEvent.NODE_KEEP_ALIVE, node_info
 
             elif event_type == EdgeEvent.GATEWAY_INFO:
-                try:
-                    gateway_info = GatewayInfo().from_bytes(data[1:])
-                    gateway = self.gateways.get(gateway_info.address)
-                    if not gateway:
-                        gateway = MariGateway(info=gateway_info)
-                        self.gateways[gateway.info.address] = gateway
-                    else:
-                        gateway.set_info(gateway_info)
-                    self.cb_application(EdgeEvent.GATEWAY_INFO, gateway_info)
-                    if self.logger and self.setup_params:
-                        # TODO: update the logging system to support more than one gateway
-                        pass
-                except (ValueError, ProtocolPayloadParserException):
-                    pass
+                gateway_info = GatewayInfo().from_bytes(data[1:])
+                gateway = self.gateways.get(gateway_info.address)
+                if not gateway:
+                    # we are learning about a new gateway, so instantiate it and add it to the list
+                    gateway = MariGateway(info=gateway_info)
+                    self.gateways[gateway.info.address] = gateway
+                else:
+                    gateway.set_info(gateway_info)
+                return True, EdgeEvent.GATEWAY_INFO, gateway_info
 
             elif event_type == EdgeEvent.NODE_DATA:
-                try:
-                    frame = Frame().from_bytes(data[1:])
-                    gateway_address = frame.header.destination
-                    node_address = frame.header.source
-                    gateway = self.gateways.get(gateway_address)
-                    if not gateway:
-                        return
+                frame = Frame().from_bytes(data[1:])
 
-                    node = gateway.get_node(node_address)
-                    if not node:
-                        return
+                gateway_address = frame.header.destination
+                node_address = frame.header.source
+                gateway = self.gateways.get(gateway_address)
+                node = gateway.get_node(node_address)
+                if not gateway or not node:
+                    return False, EdgeEvent.UNKNOWN, None
 
-                    gateway.update_node_liveness(node_address)
-                    gateway.register_received_frame(frame, is_test_packet=False)
-                    self.cb_application(EdgeEvent.NODE_DATA, frame)
-                except (ValueError, ProtocolPayloadParserException):
-                    pass
+                gateway.update_node_liveness(node_address)
+                gateway.register_received_frame(frame, is_test_packet=False)
+                return True, EdgeEvent.NODE_DATA, frame
+
+        except Exception as e:
+            print(f"Error handling MQTT data: {e}")
+
+        # fallback result in case of error
+        return False, EdgeEvent.UNKNOWN, None
+
+    def on_mqtt_data_received(self, data: bytes):
+        res, event_type, event_data = self.handle_mqtt_data(data)
+        if res:
+            if self.logger and event_type in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT]:
+                # TODO: update the logging system to also support GATEWAY_INFO events from multiple gateways
+                self.logger.log_event(event_data.gateway_address, event_data.address, event_type.name)
+            self.cb_application(event_type, event_data)

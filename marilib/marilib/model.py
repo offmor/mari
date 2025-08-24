@@ -70,7 +70,8 @@ class NodeInfoCloud(Packet):
         default_factory=lambda: [
             PacketFieldMetadata(name="address", length=8),
             PacketFieldMetadata(name="gateway_address", length=8),
-        ]
+        ],
+        repr=False
     )
     address: int = 0
     gateway_address: int = 0
@@ -81,7 +82,8 @@ class NodeInfoEdge(Packet):
     metadata: list[PacketFieldMetadata] = field(
         default_factory=lambda: [
             PacketFieldMetadata(name="address", length=8),
-        ]
+        ],
+        repr=False
     )
     address: int = 0
 

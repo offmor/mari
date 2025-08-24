@@ -160,7 +160,7 @@ class MarilibEdge(MarilibBase):
             if node := self.remove_node(node_info.address):
                 return True, event_type, node_info
             else:
-                return False, event_type, node
+                return False, event_type, node_info
 
         elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
             node_info = NodeInfoEdge().from_bytes(data[1:])
