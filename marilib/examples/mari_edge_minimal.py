@@ -27,8 +27,7 @@ def main():
                 mari_edge.send_frame(dst=node.address, payload=b"NORMAL_APP_DATA")
                 print(",", end="", flush=True)
         statistics = [
-            (f"{node.address:016X}", node.stats.received_rssi_dbm())
-            for node in mari_edge.nodes
+            (f"{node.address:016X}", node.stats.received_rssi_dbm()) for node in mari_edge.nodes
         ]
         print(f"Stats: {statistics}")
         time.sleep(3)

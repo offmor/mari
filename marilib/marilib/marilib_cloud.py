@@ -94,7 +94,9 @@ class MarilibCloud(MarilibBase):
         """
         mari_frame = Frame(Header(destination=dst), payload=payload)
 
-        self.mqtt_interface.send_data_to_edge(EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes())
+        self.mqtt_interface.send_data_to_edge(
+            EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes()
+        )
 
     def render_tui(self):
         if self.tui:
@@ -184,5 +186,7 @@ class MarilibCloud(MarilibBase):
         if res:
             if self.logger and event_type in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT]:
                 # TODO: update the logging system to also support GATEWAY_INFO events from multiple gateways
-                self.logger.log_event(event_data.gateway_address, event_data.address, event_type.name)
+                self.logger.log_event(
+                    event_data.gateway_address, event_data.address, event_type.name
+                )
             self.cb_application(event_type, event_data)

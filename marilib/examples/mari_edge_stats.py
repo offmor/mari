@@ -35,9 +35,7 @@ class LoadTester(threading.Thread):
             if not self.has_rate:
                 self.set_rate()
             if self.delay is None:
-                self._stop_event.wait(
-                    0.1
-                )  # fixed, waiting for gateway schedule to be available
+                self._stop_event.wait(0.1)  # fixed, waiting for gateway schedule to be available
                 continue
 
             # once we have rate, send packets at that rate
@@ -57,9 +55,7 @@ class LoadTester(threading.Thread):
             return
         self.test_state.rate = int(max_rate)
         packets_per_second = max_rate * (self.test_state.load / 100.0)
-        self.delay = (
-            1.0 / packets_per_second if packets_per_second > 0 else float("inf")
-        )
+        self.delay = 1.0 / packets_per_second if packets_per_second > 0 else float("inf")
         self.has_rate = True
 
 

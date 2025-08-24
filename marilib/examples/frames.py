@@ -11,7 +11,6 @@ Example usage sending to broadcast address via mosquitto_pub:
 while [ 1 ]; do  python examples/frames.py | xxd -r -p | base64 | mosquitto_pub -h localhost -p 1883 -t /mari/00A0/to_edge -l; done
 """
 
-
 from marilib.mari_protocol import Frame, Header, MARI_BROADCAST_ADDRESS
 from marilib.model import EdgeEvent
 import sys

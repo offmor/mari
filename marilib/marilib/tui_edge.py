@@ -39,9 +39,7 @@ class MarilibTUIEdge(MarilibTUI):
     def render(self, mari: MarilibEdge):
         """Render the TUI layout."""
         with mari.lock:
-            if datetime.now() - self.last_render_time < timedelta(
-                seconds=self.re_render_max_freq
-            ):
+            if datetime.now() - self.last_render_time < timedelta(seconds=self.re_render_max_freq):
                 return
             self.last_render_time = datetime.now()
             layout = Layout()
@@ -77,9 +75,7 @@ class MarilibTUIEdge(MarilibTUI):
 
         status.append("\n\n")
         status.append("Schedule: ", style="bold cyan")
-        status.append(
-            f"#{mari.gateway.info.schedule_id} ({mari.gateway.info.schedule_name})  |  "
-        )
+        status.append(f"#{mari.gateway.info.schedule_id} ({mari.gateway.info.schedule_name})  |  ")
         status.append(mari.gateway.info.repr_schedule_cells_with_colors())
         status.append("\n\n")
 
@@ -103,9 +99,7 @@ class MarilibTUIEdge(MarilibTUI):
         stats = mari.gateway.stats
         status.append(f"Nodes: {len(mari.gateway.nodes)}  |  ")
         status.append(f"Frames TX: {stats.sent_count(include_test_packets=False)}  |  ")
-        status.append(
-            f"Frames RX: {stats.received_count(include_test_packets=False)} |  "
-        )
+        status.append(f"Frames RX: {stats.received_count(include_test_packets=False)} |  ")
         status.append(f"TX/s: {stats.sent_count(1, include_test_packets=False)}  |  ")
         status.append(f"RX/s: {stats.received_count(1, include_test_packets=False)}")
 
@@ -132,9 +126,7 @@ class MarilibTUIEdge(MarilibTUI):
         table.add_column("Latency (ms)", justify="right")
         for node in nodes:
             lat_str = (
-                f"{node.latency_stats.avg_ms:.1f}"
-                if node.latency_stats.last_ms > 0
-                else "..."
+                f"{node.latency_stats.avg_ms:.1f}" if node.latency_stats.last_ms > 0 else "..."
             )
             table.add_row(
                 f"0x{node.address:016X}",

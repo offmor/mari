@@ -37,9 +37,7 @@ class MarilibTUICloud(MarilibTUI):
     def render(self, mari: MarilibCloud):
         """Render the TUI layout."""
         with mari.lock:
-            if datetime.now() - self.last_render_time < timedelta(
-                seconds=self.re_render_max_freq
-            ):
+            if datetime.now() - self.last_render_time < timedelta(seconds=self.re_render_max_freq):
                 return
             self.last_render_time = datetime.now()
             layout = Layout()

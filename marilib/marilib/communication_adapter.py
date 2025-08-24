@@ -182,6 +182,7 @@ class MQTTAdapter(CommunicationAdapterBase):
 
 class MQTTAdapterDummy(MQTTAdapter):
     """Dummy MQTT adapter, does nothing, for when edge runs only locally, without a cloud."""
+
     def __init__(self, host="", port=0, is_edge=True):
         super().__init__(host, port, is_edge)
 

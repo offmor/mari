@@ -79,7 +79,7 @@ class NodeInfoCloud(Packet):
             PacketFieldMetadata(name="address", length=8),
             PacketFieldMetadata(name="gateway_address", length=8),
         ],
-        repr=False
+        repr=False,
     )
     address: int = 0
     gateway_address: int = 0
@@ -91,7 +91,7 @@ class NodeInfoEdge(Packet):
         default_factory=lambda: [
             PacketFieldMetadata(name="address", length=8),
         ],
-        repr=False
+        repr=False,
     )
     address: int = 0
 
@@ -163,10 +163,7 @@ class FrameStats:
 
             entry = FrameLogEntry(frame=frame, is_test_packet=is_test_packet)
             self.sent.append(entry)
-            while (
-                self.sent
-                and (entry.ts - self.sent[0].ts).total_seconds() > self.window_seconds
-            ):
+            while self.sent and (entry.ts - self.sent[0].ts).total_seconds() > self.window_seconds:
                 self.sent.popleft()
 
     def add_received(self, frame: Frame, is_test_packet: bool):
@@ -179,29 +176,20 @@ class FrameStats:
             self.received.append(entry)
             while (
                 self.received
-                and (entry.ts - self.received[0].ts).total_seconds()
-                > self.window_seconds
+                and (entry.ts - self.received[0].ts).total_seconds() > self.window_seconds
             ):
                 self.received.popleft()
 
-    def sent_count(
-        self, window_secs: int = 0, include_test_packets: bool = True
-    ) -> int:
+    def sent_count(self, window_secs: int = 0, include_test_packets: bool = True) -> int:
         if window_secs == 0:
-            return (
-                self.cumulative_sent
-                if include_test_packets
-                else self.cumulative_sent_non_test
-            )
+            return self.cumulative_sent if include_test_packets else self.cumulative_sent_non_test
 
         now = datetime.now()
         # Windowed count is always for non-test packets.
         entries = [e for e in self.sent if now - e.ts < timedelta(seconds=window_secs)]
         return len(entries)
 
-    def received_count(
-        self, window_secs: int = 0, include_test_packets: bool = True
-    ) -> int:
+    def received_count(self, window_secs: int = 0, include_test_packets: bool = True) -> int:
         if window_secs == 0:
             return (
                 self.cumulative_received
@@ -210,9 +198,7 @@ class FrameStats:
             )
 
         now = datetime.now()
-        entries = [
-            e for e in self.received if now - e.ts < timedelta(seconds=window_secs)
-        ]
+        entries = [e for e in self.received if now - e.ts < timedelta(seconds=window_secs)]
         return len(entries)
 
     def success_rate(self, window_secs: int = 0) -> float:
@@ -270,9 +256,7 @@ class GatewayInfo(Packet):
             PacketFieldMetadata(name="address", length=8),
             PacketFieldMetadata(name="network_id", length=2),
             PacketFieldMetadata(name="schedule_id", length=1),
-            PacketFieldMetadata(
-                name="schedule_stats", length=4 * 8
-            ),  # 4 uint64_t values
+            PacketFieldMetadata(name="schedule_stats", length=4 * 8),  # 4 uint64_t values
         ]
     )
     address: int = 0
@@ -303,9 +287,7 @@ class GatewayInfo(Packet):
     def repr_cell_nice(self, cell: str, is_used: int):
         is_used = bool(int(is_used))
         if cell == "B":
-            return rich.text.Text(
-                "B", style=f'bold white on {"red" if is_used else "indian_red"}'
-            )
+            return rich.text.Text("B", style=f'bold white on {"red" if is_used else "indian_red"}')
         elif cell == "S":
             return rich.text.Text(
                 "S", style=f'bold white on {"purple" if is_used else "medium_purple2"}'

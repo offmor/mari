@@ -140,7 +140,9 @@ class MarilibEdge(MarilibBase):
         if event_type != EdgeEvent.NODE_DATA:
             # ignore non-data events
             return
-        if frame.header.destination != MARI_BROADCAST_ADDRESS and not self.gateway.get_node(frame.header.destination):
+        if frame.header.destination != MARI_BROADCAST_ADDRESS and not self.gateway.get_node(
+            frame.header.destination
+        ):
             # ignore frames for unknown nodes
             return
         self.send_frame(frame.header.destination, frame.payload)
@@ -204,7 +206,9 @@ class MarilibEdge(MarilibBase):
         res, event_type, event_data = self.handle_serial_data(data)
         if res:
             if self.logger and event_type in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT]:
-                self.logger.log_event(self.gateway.info.address, event_data.address, event_type.name)
+                self.logger.log_event(
+                    self.gateway.info.address, event_data.address, event_type.name
+                )
             if event_type == EdgeEvent.GATEWAY_INFO:
                 # when the first GATEWAY_INFO is received, this will cause the MQTT interface to be initialized
                 self.mqtt_interface.update(event_data.network_id_str, self.on_mqtt_data_received)
@@ -214,7 +218,9 @@ class MarilibEdge(MarilibBase):
             self.cb_application(event_type, event_data)
             self.send_data_to_cloud(event_type, event_data)
 
-    def send_data_to_cloud(self, event_type: EdgeEvent, event_data: NodeInfoEdge | GatewayInfo | Frame):
+    def send_data_to_cloud(
+        self, event_type: EdgeEvent, event_data: NodeInfoEdge | GatewayInfo | Frame
+    ):
         if event_type in [EdgeEvent.NODE_JOINED, EdgeEvent.NODE_LEFT, EdgeEvent.NODE_KEEP_ALIVE]:
             # the cloud needs to know which gateway the node belongs to
             event_data = event_data.to_cloud(self.gateway.info.address)

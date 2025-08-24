@@ -28,8 +28,7 @@ def main():
             mari_cloud.send_frame(dst=node.address, payload=b"NORMAL_APP_DATA")
             print(",", end="", flush=True)
         statistics = [
-            (f"{node.address:016X}", node.stats.received_rssi_dbm())
-            for node in mari_cloud.nodes
+            (f"{node.address:016X}", node.stats.received_rssi_dbm()) for node in mari_cloud.nodes
         ]
         print(f"Network statistics: {statistics}")
         time.sleep(1)
