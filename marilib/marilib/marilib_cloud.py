@@ -12,7 +12,6 @@ from marilib.model import (
     MariNode,
     NodeInfoCloud,
 )
-from marilib.protocol import ProtocolPayloadParserException
 from marilib.communication_adapter import MQTTAdapter
 from marilib.marilib import MarilibBase
 from marilib.tui_cloud import MarilibTUICloud

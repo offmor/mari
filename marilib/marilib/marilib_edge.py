@@ -95,7 +95,7 @@ class MarilibEdge(MarilibBase):
 
         # FIXME: instead of prefixing with a magic 0x01 byte, we should use EdgeEvent.NODE_DATA
         self.serial_interface.send_data(b"\x01" + mari_frame.to_bytes())
-    
+
     def render_tui(self):
         if self.tui:
             self.tui.render(self)
@@ -170,7 +170,7 @@ class MarilibEdge(MarilibBase):
 
         elif event_type == EdgeEvent.NODE_LEFT:
             node_info = NodeInfoEdge().from_bytes(data[1:])
-            if node := self.remove_node(node_info.address):
+            if self.remove_node(node_info.address):
                 return True, event_type, node_info
             else:
                 return False, event_type, node_info
@@ -178,7 +178,7 @@ class MarilibEdge(MarilibBase):
         elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
             node_info = NodeInfoEdge().from_bytes(data[1:])
             with self.lock:
-                node = self.gateway.update_node_liveness(node_info.address)
+                self.gateway.update_node_liveness(node_info.address)
             return True, event_type, node_info
 
         elif event_type == EdgeEvent.GATEWAY_INFO:

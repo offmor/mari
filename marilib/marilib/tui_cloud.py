@@ -8,6 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from marilib import MarilibCloud
 from marilib.model import MariGateway
 from marilib.tui import MarilibTUI
 
@@ -33,7 +34,7 @@ class MarilibTUICloud(MarilibTUI):
         available_height = terminal_height - 10 - 2 - 2 - 1 - 2
         return max(2, available_height)
 
-    def render(self, mari: "MarilibCloud"):
+    def render(self, mari: MarilibCloud):
         """Render the TUI layout."""
         with mari.lock:
             if datetime.now() - self.last_render_time < timedelta(
@@ -48,7 +49,7 @@ class MarilibTUICloud(MarilibTUI):
             )
             self.live.update(layout, refresh=True)
 
-    def create_header_panel(self, mari: "MarilibCloud") -> Panel:
+    def create_header_panel(self, mari: MarilibCloud) -> Panel:
         """Create the header panel with MQTT connection and network info."""
         status = Text()
         status.append("MarilibCloud is ", style="bold")
@@ -92,7 +93,7 @@ class MarilibTUICloud(MarilibTUI):
             node_count = f"{len(gateway.nodes)} / {gateway.info.schedule_uplink_cells}"
             schedule_info = f"#{gateway.info.schedule_id} {gateway.info.schedule_name}"
             schedule_repr = gateway.info.repr_schedule_cells_with_colors()
-            
+
             table.add_row(
                 gateway_addr,
                 node_count,
@@ -101,17 +102,17 @@ class MarilibTUICloud(MarilibTUI):
             )
         return table
 
-    def create_gateways_panel(self, mari: "MarilibCloud") -> Panel:
+    def create_gateways_panel(self, mari: MarilibCloud) -> Panel:
         """Create the panel that contains the gateways table."""
         gateways = list(mari.gateways.values())
         max_rows = self.get_max_rows()
         max_displayable_gateways = self.max_tables * max_rows
         gateways_to_display = gateways[:max_displayable_gateways]
         remaining_gateways = max(0, len(gateways) - max_displayable_gateways)
-        
+
         tables = []
         current_table_gateways = []
-        
+
         for i, gateway in enumerate(gateways_to_display):
             current_table_gateways.append(gateway)
             if len(current_table_gateways) == max_rows or i == len(gateways_to_display) - 1:
@@ -120,14 +121,14 @@ class MarilibTUICloud(MarilibTUI):
                 current_table_gateways = []
                 if len(tables) >= self.max_tables:
                     break
-        
+
         if len(tables) > 1:
             content = Columns(tables, equal=True, expand=True)
         elif tables:
             content = tables[0]
         else:
             content = Table(title="No Gateways Connected")
-        
+
         if remaining_gateways > 0:
             panel_content = Group(
                 content,
@@ -138,7 +139,7 @@ class MarilibTUICloud(MarilibTUI):
             )
         else:
             panel_content = content
-        
+
         return Panel(
             panel_content,
             title="[bold]Connected Gateways",

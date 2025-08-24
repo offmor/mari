@@ -31,7 +31,7 @@ dependencies = [
 description = "MariLib is a Python library for interacting with the Mari network."
 readme = "README.md"
 license = { text="BSD" }
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD License",
