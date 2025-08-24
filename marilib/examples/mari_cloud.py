@@ -5,6 +5,7 @@ from marilib.mari_protocol import MARI_BROADCAST_ADDRESS, MARI_NET_ID_DEFAULT, F
 from marilib.marilib_cloud import MarilibCloud
 from marilib.model import EdgeEvent, GatewayInfo, MariNode
 from marilib.communication_adapter import MQTTAdapter
+from marilib.tui_cloud import MariLibTUICloud
 
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
@@ -49,21 +50,21 @@ def main(mqtt_host: str, network_id: str, log_dir: str):
         network_id=int(network_id, 16),
         main_file=__file__,
     )
+    tui = MariLibTUICloud()
 
     try:
         while True:
             mari.update()
-
             if mari.nodes:
                 print(f"Sending frame to broadcast address {MARI_BROADCAST_ADDRESS:016X}")
                 mari.send_frame(MARI_BROADCAST_ADDRESS, NORMAL_DATA_PAYLOAD)
-
+            tui.render(mari)
             time.sleep(0.5)
 
     except KeyboardInterrupt:
         pass
     finally:
-        pass
+        tui.close()
 
 
 if __name__ == "__main__":
