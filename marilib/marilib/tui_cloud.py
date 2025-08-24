@@ -83,14 +83,20 @@ class MarilibTUICloud:
             title=title,
         )
         table.add_column("Gateway", style="cyan")
-        table.add_column("Schedule", style="white")
+        table.add_column("Nodes", justify="center")
+        table.add_column("Schedule")
+        table.add_column("Schedule Usage")
 
         for gateway in gateways:
             gateway_addr = f"0x{gateway.info.address:016X}"
+            node_count = f"{len(gateway.nodes)} / {gateway.info.schedule_uplink_cells}"
+            schedule_info = f"#{gateway.info.schedule_id} {gateway.info.schedule_name}"
             schedule_repr = gateway.info.repr_schedule_cells_with_colors()
             
             table.add_row(
                 gateway_addr,
+                node_count,
+                schedule_info,
                 schedule_repr,
             )
         return table

@@ -41,6 +41,14 @@ SCHEDULES = {
     },
 }
 
+EMPTY_SCHEDULE_DATA = {
+    "name": "unknown",
+    "slots": "",
+    "max_nodes": 0,
+    "d_down": 0,
+    "sf_duration": 0,
+}
+
 MARI_TIMEOUT_NODE_IS_ALIVE = 3  # seconds
 MARI_TIMEOUT_GATEWAY_IS_ALIVE = 3  # seconds
 
@@ -329,6 +337,14 @@ class GatewayInfo(Packet):
     @property
     def network_id_str(self) -> str:
         return f"{self.network_id:04X}"
+
+    @property
+    def schedule_uplink_cells(self) -> int:
+        return SCHEDULES.get(self.schedule_id, EMPTY_SCHEDULE_DATA)["max_nodes"]
+
+    @property
+    def schedule_downlink_cells(self) -> int:
+        return SCHEDULES.get(self.schedule_id, EMPTY_SCHEDULE_DATA)["slots"].count("D")
 
 
 @dataclass
