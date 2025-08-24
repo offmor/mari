@@ -8,11 +8,11 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from marilib.marilib_edge import MarilibEdge
 from marilib.model import MariNode, TestState
+from marilib.tui import MarilibTUI
 
 
-class MarilibTUIEdge:
+class MarilibTUIEdge(MarilibTUI):
     """A Text-based User Interface for MarilibEdge."""
 
     def __init__(
@@ -35,7 +35,7 @@ class MarilibTUIEdge:
         available_height = terminal_height - 10 - 2 - 2 - 1 - 2
         return max(2, available_height)
 
-    def render(self, mari: MarilibEdge):
+    def render(self, mari: "MarilibEdge"):
         """Render the TUI layout."""
         with mari.lock:
             if datetime.now() - self.last_render_time < timedelta(
@@ -50,7 +50,7 @@ class MarilibTUIEdge:
             )
             self.live.update(layout, refresh=True)
 
-    def create_header_panel(self, mari: MarilibEdge) -> Panel:
+    def create_header_panel(self, mari: "MarilibEdge") -> Panel:
         """Create the header panel with gateway and network stats."""
         status = Text()
         status.append("MarilibEdge is ", style="bold")
@@ -149,7 +149,7 @@ class MarilibTUIEdge:
             )
         return table
 
-    def create_nodes_panel(self, mari: MarilibEdge) -> Panel:
+    def create_nodes_panel(self, mari: "MarilibEdge") -> Panel:
         """Create the panel that contains the nodes table."""
         nodes = mari.gateway.nodes
         max_rows = self.get_max_rows()

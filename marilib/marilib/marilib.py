@@ -25,3 +25,11 @@ class MarilibBase(ABC):
     @abstractmethod
     def send_frame(self, dst: int, payload: bytes):
         """Sends a frame to the network."""
+
+    @abstractmethod
+    def render_tui(self):
+        """Renders the TUI."""
+
+    @abstractmethod
+    def close_tui(self):
+        """Closes the TUI."""

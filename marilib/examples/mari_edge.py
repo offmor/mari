@@ -43,27 +43,29 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
 )
 def main(port: str | None, mqtt_host: str, log_dir: str):
     """A basic example of using the MarilibEdge library."""
-    tui = MarilibTUIEdge()
-    logger = MetricsLogger(
-        log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
+    mari = MarilibEdge(
+        on_event,
+        serial_interface=SerialAdapter(port),
+        mqtt_interface=MQTTAdapter.from_host_port(mqtt_host, is_edge=True) if mqtt_host else None,
+        logger=MetricsLogger(
+            log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
+        ),
+        tui=MarilibTUIEdge(),
+        main_file=__file__,
     )
-    serial_interface = SerialAdapter(port)
-    mqtt_interface = MQTTAdapter.from_host_port(mqtt_host, is_edge=True) if mqtt_host else None
-
-    mari = MarilibEdge(on_event, serial_interface=serial_interface, mqtt_interface=mqtt_interface, logger=logger, main_file=__file__)
 
     try:
         while True:
             mari.update()
             if not mari.uses_mqtt and mari.nodes:
                 mari.send_frame(MARI_BROADCAST_ADDRESS, NORMAL_DATA_PAYLOAD)
-            tui.render(mari)
+            mari.render_tui()
             time.sleep(0.5)
     except KeyboardInterrupt:
         pass
     finally:
-        tui.close()
-        logger.close()
+        mari.close_tui()
+        mari.logger.close()
 
 
 if __name__ == "__main__":

@@ -22,15 +22,14 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame | GatewayInfo):
     type=str,
     default="localhost:1883",
     show_default=True,
-    help="MQTT broker to use (default: localhost:1883)",
+    help="MQTT broker to use",
 )
 @click.option(
     "--network-id",
     "-n",
     type=lambda x: int(x, 16),
     default=MARI_NET_ID_DEFAULT,
-    show_default=True,
-    help="Network ID to use (default: 0x0001)",
+    help=f"Network ID to use [default: 0x{MARI_NET_ID_DEFAULT:04X}]",
 )
 @click.option(
     "--log-dir",
@@ -45,23 +44,24 @@ def main(mqtt_host: str, network_id: int, log_dir: str):
     mari = MarilibCloud(
         on_event,
         mqtt_interface=MQTTAdapter.from_host_port(mqtt_host, is_edge=False),
+        # logger=TBD, TODO: add logger to MarilibCloud
         network_id=network_id,
+        tui=MarilibTUICloud(),
         main_file=__file__,
     )
-    tui = MarilibTUICloud()
 
     try:
         while True:
             mari.update()
             if mari.nodes:
                 mari.send_frame(MARI_BROADCAST_ADDRESS, NORMAL_DATA_PAYLOAD)
-            tui.render(mari)
+            mari.render_tui()
             time.sleep(0.5)
 
     except KeyboardInterrupt:
         pass
     finally:
-        tui.close()
+        mari.close_tui()
 
 
 if __name__ == "__main__":

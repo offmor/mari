@@ -17,6 +17,7 @@ from marilib.model import (
 from marilib.protocol import ProtocolPayloadParserException
 from marilib.communication_adapter import MQTTAdapter, MQTTAdapterDummy, SerialAdapter
 from marilib.marilib import MarilibBase
+from marilib.tui_edge import MarilibTUIEdge
 
 LOAD_PACKET_PAYLOAD = b"L"
 
@@ -33,6 +34,7 @@ class MarilibEdge(MarilibBase):
     cb_application: Callable[[EdgeEvent, MariNode | Frame], None]
     serial_interface: SerialAdapter
     mqtt_interface: MQTTAdapter | None = None
+    tui: MarilibTUIEdge | None = None
 
     logger: Any | None = None
     gateway: MariGateway = field(default_factory=MariGateway)
@@ -93,6 +95,14 @@ class MarilibEdge(MarilibBase):
 
         # FIXME: instead of prefixing with a magic 0x01 byte, we should use EdgeEvent.NODE_DATA
         self.serial_interface.send_data(b"\x01" + mari_frame.to_bytes())
+    
+    def render_tui(self):
+        if self.tui:
+            self.tui.render(self)
+
+    def close_tui(self):
+        if self.tui:
+            self.tui.close()
 
     # ============================ MarilibEdge methods =========================
 
@@ -119,6 +129,8 @@ class MarilibEdge(MarilibBase):
 
     def on_mqtt_data_received(self, data: bytes):
         """Just forwards the data to the serial interface."""
+        if len(data) < 1:
+            return
         try:
             event_type = EdgeEvent(data[0])
             frame = Frame().from_bytes(data[1:])

@@ -15,6 +15,7 @@ from marilib.model import (
 from marilib.protocol import ProtocolPayloadParserException
 from marilib.communication_adapter import MQTTAdapter
 from marilib.marilib import MarilibBase
+from marilib.tui_cloud import MarilibTUICloud
 
 LOAD_PACKET_PAYLOAD = b"L"
 
@@ -29,6 +30,7 @@ class MarilibCloud(MarilibBase):
     cb_application: Callable[[EdgeEvent, MariNode | Frame | GatewayInfo], None]
     mqtt_interface: MQTTAdapter
     network_id: int
+    tui: MarilibTUICloud | None = None
 
     logger: Any | None = None
     gateways: dict[int, MariGateway] = field(default_factory=dict)
@@ -94,6 +96,14 @@ class MarilibCloud(MarilibBase):
         mari_frame = Frame(Header(destination=dst), payload=payload)
 
         self.mqtt_interface.send_data_to_edge(EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes())
+
+    def render_tui(self):
+        if self.tui:
+            self.tui.render(self)
+
+    def close_tui(self):
+        if self.tui:
+            self.tui.close()
 
     # ============================ MarilibCloud methods =========================
 

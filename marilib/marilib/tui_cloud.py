@@ -8,11 +8,11 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from marilib.marilib_cloud import MarilibCloud
 from marilib.model import MariGateway
+from marilib.tui import MarilibTUI
 
 
-class MarilibTUICloud:
+class MarilibTUICloud(MarilibTUI):
     """A Text-based User Interface for MarilibCloud."""
 
     def __init__(
@@ -33,7 +33,7 @@ class MarilibTUICloud:
         available_height = terminal_height - 10 - 2 - 2 - 1 - 2
         return max(2, available_height)
 
-    def render(self, mari: MarilibCloud):
+    def render(self, mari: "MarilibCloud"):
         """Render the TUI layout."""
         with mari.lock:
             if datetime.now() - self.last_render_time < timedelta(
@@ -48,7 +48,7 @@ class MarilibTUICloud:
             )
             self.live.update(layout, refresh=True)
 
-    def create_header_panel(self, mari: MarilibCloud) -> Panel:
+    def create_header_panel(self, mari: "MarilibCloud") -> Panel:
         """Create the header panel with MQTT connection and network info."""
         status = Text()
         status.append("MarilibCloud is ", style="bold")
@@ -101,7 +101,7 @@ class MarilibTUICloud:
             )
         return table
 
-    def create_gateways_panel(self, mari: MarilibCloud) -> Panel:
+    def create_gateways_panel(self, mari: "MarilibCloud") -> Panel:
         """Create the panel that contains the gateways table."""
         gateways = list(mari.gateways.values())
         max_rows = self.get_max_rows()
