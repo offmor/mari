@@ -18,7 +18,7 @@ class MarilibTUICloud(MarilibTUI):
 
     def __init__(
         self,
-        max_tables=3,
+        max_tables=4,
         re_render_max_freq=0.2,
     ):
         self.console = Console()
@@ -69,6 +69,9 @@ class MarilibTUICloud(MarilibTUI):
         status.append("  |  ")
         status.append("Gateways: ", style="bold cyan")
         status.append(f"{len(mari.gateways)}")
+        status.append("  |  ")
+        status.append("Nodes: ", style="bold cyan")
+        status.append(f"{len(mari.nodes)}")
 
         return Panel(status, title="[bold]MarilibCloud Status", border_style="blue")
 
@@ -142,7 +145,7 @@ class MarilibTUICloud(MarilibTUI):
             panel_content = Group(
                 content,
                 Text(
-                    f"\n(...and {remaining_gateways} more gateways)",
+                    f"\n...and {remaining_gateways} more gateway(s)",
                     style="bold yellow",
                 ),
             )
