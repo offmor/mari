@@ -1,4 +1,5 @@
 import time
+import sys
 
 from marilib.marilib_cloud import MarilibCloud
 from marilib.communication_adapter import MQTTAdapter
@@ -16,7 +17,7 @@ def main():
     mari_cloud = MarilibCloud(
         on_event,
         mqtt_interface=MQTTAdapter("localhost", 1883, is_edge=False),
-        network_id=0xA0,
+        network_id=int(sys.argv[1], 16) if len(sys.argv) > 1 else 0xA0,
     )
 
     while True:

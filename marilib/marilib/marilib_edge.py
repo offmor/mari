@@ -121,16 +121,17 @@ class MarilibEdge(MarilibBase):
         """Just forwards the data to the serial interface."""
         try:
             event_type = EdgeEvent(data[0])
-            if event_type == EdgeEvent.NODE_DATA:
-                frame = Frame().from_bytes(data[1:])
-                # print(f"Forwarding frame of length {len(frame.payload)} to dst = {frame.header.destination:016X}, payload = {frame.payload.hex()}")
-                # reuse the send_frame function to send the frame to the gateway
-                self.send_frame(frame.header.destination, frame.payload)
-            else:
-                print(f"Received unknown event type: {event_type}")
+            frame = Frame().from_bytes(data[1:])
         except (ValueError, ProtocolPayloadParserException) as exc:
             print(f"[red]Error parsing frame: {exc}[/]")
             return
+        if event_type != EdgeEvent.NODE_DATA:
+            # ignore non-data events
+            return
+        if frame.header.destination != MARI_BROADCAST_ADDRESS and not self.gateway.get_node(frame.header.destination):
+            # ignore frames for unknown nodes
+            return
+        self.send_frame(frame.header.destination, frame.payload)
 
     def handle_serial_data(self, data: bytes) -> tuple[bool, EdgeEvent, Any]:
         """
