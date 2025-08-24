@@ -6,7 +6,7 @@ from marilib.mari_protocol import Frame, MARI_BROADCAST_ADDRESS
 from marilib.model import EdgeEvent, MariNode
 from marilib.communication_adapter import SerialAdapter, MQTTAdapter
 from marilib.serial_uart import get_default_port
-from marilib.tui_edge import MariLibTUIEdge
+from marilib.tui_edge import MarilibTUIEdge
 from marilib.marilib_edge import MarilibEdge
 
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
@@ -14,7 +14,6 @@ NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
 def on_event(event: EdgeEvent, event_data: MariNode | Frame):
     """An event handler for the application."""
-    # print(".", end="", flush=True)
     pass
 
 
@@ -44,7 +43,7 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
 )
 def main(port: str | None, mqtt_host: str, log_dir: str):
     """A basic example of using the MarilibEdge library."""
-    tui = MariLibTUIEdge()
+    tui = MarilibTUIEdge()
     logger = MetricsLogger(
         log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
     )

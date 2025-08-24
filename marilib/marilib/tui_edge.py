@@ -12,7 +12,7 @@ from marilib.marilib_edge import MarilibEdge
 from marilib.model import MariNode, TestState
 
 
-class MariLibTUIEdge:
+class MarilibTUIEdge:
     """A Text-based User Interface for MarilibEdge."""
 
     def __init__(

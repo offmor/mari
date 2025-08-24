@@ -12,7 +12,7 @@ from marilib.marilib_cloud import MarilibCloud
 from marilib.model import MariGateway
 
 
-class MariLibTUICloud:
+class MarilibTUICloud:
     """A Text-based User Interface for MarilibCloud."""
 
     def __init__(
