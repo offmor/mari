@@ -67,6 +67,9 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.network_id = None
         self.client = None
         self.on_data_received = None
+        # optimize qos for throughput
+        # 0 = no delivery guarantee, 1 = at least once, 2 = exactly once
+        self.qos = 0
 
     @classmethod
     def from_host_port(cls, host_port: str, is_edge: bool):
@@ -134,6 +137,7 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client.publish(
             f"/mari/{self.network_id}/to_edge",
             base64.b64encode(data).decode(),
+            qos=self.qos,
         )
 
     def send_data_to_cloud(self, data):
@@ -142,6 +146,7 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client.publish(
             f"/mari/{self.network_id}/to_cloud",
             base64.b64encode(data).decode(),
+            qos=self.qos,
         )
 
     # ==== private methods ====
@@ -172,11 +177,11 @@ class MQTTAdapter(CommunicationAdapterBase):
         pass
 
     def _on_connect_edge(self, client, userdata, flags, reason_code, properties):
-        self.client.subscribe(f"/mari/{self.network_id}/to_edge")
+        self.client.subscribe(f"/mari/{self.network_id}/to_edge", qos=self.qos)
         print(f"[yellow]Subscribed to /mari/{self.network_id}/to_edge[/]")
 
     def _on_connect_cloud(self, client, userdata, flags, reason_code, properties):
-        self.client.subscribe(f"/mari/{self.network_id}/to_cloud")
+        self.client.subscribe(f"/mari/{self.network_id}/to_cloud", qos=self.qos)
         print(f"[yellow]Subscribed to /mari/{self.network_id}/to_cloud[/]")
 
 

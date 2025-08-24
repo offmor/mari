@@ -90,15 +90,12 @@ class MarilibTUICloud(MarilibTUI):
         schedule_info = f"#{gateway.info.schedule_id} {gateway.info.schedule_name}"
         table.add_row(
             f"[bold cyan]0x{gateway.info.address:016X}[/bold cyan]",
-            f"Nodes: {node_count}  |  Schedule: {schedule_info}"
+            f"Nodes: {node_count}  |  Schedule: {schedule_info}",
         )
 
         # Row 2: Schedule usage
         schedule_repr = gateway.info.repr_schedule_cells_with_colors()
-        table.add_row(
-            "[bold cyan]Live schedule[/bold cyan]",
-            schedule_repr
-        )
+        table.add_row("[bold cyan]Live schedule[/bold cyan]", schedule_repr)
 
         # Row 3: Node list
         if gateway.nodes:
@@ -106,18 +103,15 @@ class MarilibTUICloud(MarilibTUI):
             node_display = " ".join(node_addresses)
         else:
             node_display = "—"
-        
-        table.add_row(
-            "[bold cyan]Nodes[/bold cyan]",
-            node_display
-        )
+
+        table.add_row("[bold cyan]Nodes[/bold cyan]", node_display)
 
         return table
 
     def create_gateways_panel(self, mari: MarilibCloud) -> Panel:
         """Create the panel that contains individual gateway tables."""
         gateways = list(mari.gateways.values())
-        
+
         if not gateways:
             empty_table = Table(title="No Gateways Connected")
             return Panel(
