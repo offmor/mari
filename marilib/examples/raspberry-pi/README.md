@@ -49,6 +49,10 @@ cd /home/pi/marilib/examples/raspberry-pi
 sudo chmod +x setup_marilib_service.sh
 source setup_marilib_service.sh
 ```
+then reboot:
+```
+sudo reboot
+```
 
 To launch the TUI:
 ```
