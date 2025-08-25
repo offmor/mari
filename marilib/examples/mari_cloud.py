@@ -6,6 +6,7 @@ from marilib.marilib_cloud import MarilibCloud
 from marilib.model import EdgeEvent, GatewayInfo, MariNode
 from marilib.communication_adapter import MQTTAdapter
 from marilib.tui_cloud import MarilibTUICloud
+from marilib.logger import MetricsLogger
 
 NORMAL_DATA_PAYLOAD = b"NORMAL_APP_DATA"
 
@@ -44,7 +45,9 @@ def main(mqtt_host: str, network_id: int, log_dir: str):
     mari = MarilibCloud(
         on_event,
         mqtt_interface=MQTTAdapter.from_host_port(mqtt_host, is_edge=False),
-        # logger=TBD, TODO: add logger to MarilibCloud
+        logger=MetricsLogger(
+            log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
+        ),
         network_id=network_id,
         tui=MarilibTUICloud(),
         main_file=__file__,
@@ -62,6 +65,7 @@ def main(mqtt_host: str, network_id: int, log_dir: str):
         pass
     finally:
         mari.close_tui()
+        mari.logger.close()
 
 
 if __name__ == "__main__":

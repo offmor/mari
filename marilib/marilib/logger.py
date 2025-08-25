@@ -82,6 +82,8 @@ class MetricsLogger:
         self._gateway_writer = csv.writer(self._gateway_file)
         gateway_header = [
             "timestamp",
+            "gateway_address",
+            "schedule_id",
             "connected_nodes",
             "tx_total",
             "rx_total",
@@ -135,6 +137,8 @@ class MetricsLogger:
         timestamp = datetime.now().isoformat()
         row = [
             timestamp,
+            f"0x{gateway.info.address:016X}",
+            gateway.info.schedule_id,
             len(gateway.nodes),
             gateway.stats.sent_count(include_test_packets=False),
             gateway.stats.received_count(include_test_packets=False),

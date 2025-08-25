@@ -45,7 +45,7 @@ class MarilibCloud(MarilibBase):
             "main_file": self.main_file or "unknown",
             "mqtt_host": self.mqtt_interface.host,
             "mqtt_port": self.mqtt_interface.port,
-            "network_id": self.network_id,
+            "network_id": self.network_id_str,
         }
         self.mqtt_interface.set_network_id(self.network_id_str)
         self.mqtt_interface.set_on_data_received(self.on_mqtt_data_received)
@@ -65,7 +65,8 @@ class MarilibCloud(MarilibBase):
             # update each gateway
             for gateway in self.gateways.values():
                 gateway.update()
-                # TODO: call the logger here and log the gateway stats (requires modifications in the logger class)
+                if self.logger:
+                    self.logger.log_periodic_metrics(gateway, gateway.nodes)
 
     @property
     def nodes(self) -> list[MariNode]:
