@@ -27,9 +27,9 @@ ExecStartPre=/bin/sleep 5
 
 #check that ttyACM10 is available not just that it exists
 ExecStartPre=/usr/bin/udevadm settle
-ExecStartPre=/bin/bash -c 'for i in {1..200};do exec 3<>/dev/ttyACM10 && exit 0 || sleep 0.2; done; echo " Gateway port: ttyACM10 not ready" >&2; exit 1'
+ExecStartPre=/bin/bash -c 'for i in {1..200};do exec 3<>/dev/ttyACM10 && exit 0 || sleep 0.2; done; echo " Gateway port: ttyACM10 not ready, check connections and reboot" >&2; exit 1'
 
-run basic.py
+#run basic.py
 ExecStart=/usr/bin/tmux new-session -s marilib -d "/home/pi/marilib/venv/bin/python /home/pi/marilib/examples/basic.py -p /dev/ttyACM10"
 ExecStop=/usr/bin/tmux kill-session -t marilib
 Type=forking
