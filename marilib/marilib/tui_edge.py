@@ -8,12 +8,13 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from marilib.marilib import MariLib
+from marilib import MarilibEdge
 from marilib.model import MariNode, TestState
+from marilib.tui import MarilibTUI
 
 
-class MariLibTUIEdge:
-    """A Text-based User Interface for MariLib."""
+class MarilibTUIEdge(MarilibTUI):
+    """A Text-based User Interface for MarilibEdge."""
 
     def __init__(
         self,
@@ -35,30 +36,29 @@ class MariLibTUIEdge:
         available_height = terminal_height - 10 - 2 - 2 - 1 - 2
         return max(2, available_height)
 
-    def render(self, mari: MariLib):
+    def render(self, mari: MarilibEdge):
         """Render the TUI layout."""
-        if datetime.now() - self.last_render_time < timedelta(
-            seconds=self.re_render_max_freq
-        ):
-            return
-        self.last_render_time = datetime.now()
-        layout = Layout()
-        layout.split(
-            Layout(self.create_header_panel(mari), size=12),
-            Layout(self.create_nodes_panel(mari)),
-        )
-        self.live.update(layout, refresh=True)
+        with mari.lock:
+            if datetime.now() - self.last_render_time < timedelta(seconds=self.re_render_max_freq):
+                return
+            self.last_render_time = datetime.now()
+            layout = Layout()
+            layout.split(
+                Layout(self.create_header_panel(mari), size=12),
+                Layout(self.create_nodes_panel(mari)),
+            )
+            self.live.update(layout, refresh=True)
 
-    def create_header_panel(self, mari: MariLib) -> Panel:
+    def create_header_panel(self, mari: MarilibEdge) -> Panel:
         """Create the header panel with gateway and network stats."""
         status = Text()
-        status.append("MariLib Edge is ", style="bold")
+        status.append("MarilibEdge is ", style="bold")
         status.append(
             "connected" if mari.serial_connected else "disconnected",
             style="bold green" if mari.serial_connected else "bold red",
         )
         status.append(
-            f" via {mari.port} at {mari.baudrate} baud "
+            f" via {mari.serial_interface.port} at {mari.serial_interface.baudrate} baud "
             f"since {mari.started_ts.strftime('%Y-%m-%d %H:%M:%S')}"
         )
         status.append("  |  ")
@@ -75,9 +75,7 @@ class MariLibTUIEdge:
 
         status.append("\n\n")
         status.append("Schedule: ", style="bold cyan")
-        status.append(
-            f"#{mari.gateway.info.schedule_id} ({mari.gateway.info.schedule_name})  |  "
-        )
+        status.append(f"#{mari.gateway.info.schedule_id} ({mari.gateway.info.schedule_name})  |  ")
         status.append(mari.gateway.info.repr_schedule_cells_with_colors())
         status.append("\n\n")
 
@@ -101,13 +99,11 @@ class MariLibTUIEdge:
         stats = mari.gateway.stats
         status.append(f"Nodes: {len(mari.gateway.nodes)}  |  ")
         status.append(f"Frames TX: {stats.sent_count(include_test_packets=False)}  |  ")
-        status.append(
-            f"Frames RX: {stats.received_count(include_test_packets=False)} |  "
-        )
+        status.append(f"Frames RX: {stats.received_count(include_test_packets=False)} |  ")
         status.append(f"TX/s: {stats.sent_count(1, include_test_packets=False)}  |  ")
         status.append(f"RX/s: {stats.received_count(1, include_test_packets=False)}")
 
-        return Panel(status, title="[bold]MariLib Status", border_style="blue")
+        return Panel(status, title="[bold]MarilibEdge Status", border_style="blue")
 
     def create_nodes_table(self, nodes: list[MariNode], title="") -> Table:
         """Create a table displaying information about connected nodes."""
@@ -130,9 +126,7 @@ class MariLibTUIEdge:
         table.add_column("Latency (ms)", justify="right")
         for node in nodes:
             lat_str = (
-                f"{node.latency_stats.avg_ms:.1f}"
-                if node.latency_stats.last_ms > 0
-                else "..."
+                f"{node.latency_stats.avg_ms:.1f}" if node.latency_stats.last_ms > 0 else "..."
             )
             table.add_row(
                 f"0x{node.address:016X}",
@@ -148,7 +142,7 @@ class MariLibTUIEdge:
             )
         return table
 
-    def create_nodes_panel(self, mari: MariLib) -> Panel:
+    def create_nodes_panel(self, mari: MarilibEdge) -> Panel:
         """Create the panel that contains the nodes table."""
         nodes = mari.gateway.nodes
         max_rows = self.get_max_rows()

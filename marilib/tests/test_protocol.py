@@ -15,9 +15,7 @@ def test_header_from_bytes():
     assert header.destination == int.from_bytes(
         bytes.fromhex("59291ba8fdcecef5"), byteorder="little"
     )
-    assert header.source == int.from_bytes(
-        bytes.fromhex("31eb7f2526ef0399"), byteorder="little"
-    )
+    assert header.source == int.from_bytes(bytes.fromhex("31eb7f2526ef0399"), byteorder="little")
 
 
 def test_frame_from_bytes():

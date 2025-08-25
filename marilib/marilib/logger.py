@@ -44,7 +44,7 @@ class MetricsLogger:
             self._events_file = open(events_path, "w", newline="", encoding="utf-8")
             self._events_writer = csv.writer(self._events_file)
             self._events_writer.writerow(
-                ["timestamp", "node_address", "event_name", "event_tag"]
+                ["timestamp", "gateway_address", "node_address", "event_name", "event_tag"]
             )
 
             self._open_new_segment()
@@ -95,6 +95,7 @@ class MetricsLogger:
         self._nodes_writer = csv.writer(self._nodes_file)
         nodes_header = [
             "timestamp",
+            "gateway_address",
             "node_address",
             "is_alive",
             "tx_total",
@@ -122,9 +123,7 @@ class MetricsLogger:
         return True
 
     def log_periodic_metrics(self, gateway: MariGateway, nodes: List[MariNode]):
-        if datetime.now() - self.last_log_time >= timedelta(
-            seconds=self.log_interval_seconds
-        ):
+        if datetime.now() - self.last_log_time >= timedelta(seconds=self.log_interval_seconds):
             self.log_gateway_metrics(gateway)
             self.log_all_nodes_metrics(nodes)
             self.last_log_time = datetime.now()
@@ -154,6 +153,7 @@ class MetricsLogger:
         for node in nodes:
             row = [
                 timestamp,
+                f"0x{node.gateway_address:016X}",
                 f"0x{node.address:016X}",
                 node.is_alive,
                 node.stats.sent_count(include_test_packets=False),
@@ -170,7 +170,9 @@ class MetricsLogger:
             ]
             self._nodes_writer.writerow(row)
 
-    def log_event(self, node_address: int, event_name: str, event_tag: str = ""):
+    def log_event(
+        self, gateway_address: int, node_address: int, event_name: str, event_tag: str = ""
+    ):
         """Logs an event to the events log file."""
         if not self.active or self._events_writer is None:
             return
@@ -178,6 +180,7 @@ class MetricsLogger:
         timestamp = datetime.now().isoformat()
         row = [
             timestamp,
+            f"0x{gateway_address:016X}",
             f"0x{node_address:016X}",
             event_name,
             event_tag,

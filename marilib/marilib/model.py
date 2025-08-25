@@ -41,6 +41,17 @@ SCHEDULES = {
     },
 }
 
+EMPTY_SCHEDULE_DATA = {
+    "name": "unknown",
+    "slots": "",
+    "max_nodes": 0,
+    "d_down": 0,
+    "sf_duration": 0,
+}
+
+MARI_TIMEOUT_NODE_IS_ALIVE = 3  # seconds
+MARI_TIMEOUT_GATEWAY_IS_ALIVE = 3  # seconds
+
 
 @dataclass
 class TestState:
@@ -54,6 +65,38 @@ class EdgeEvent(IntEnum):
     NODE_DATA = 3
     NODE_KEEP_ALIVE = 4
     GATEWAY_INFO = 5
+    UNKNOWN = 255
+
+    @classmethod
+    def to_bytes(cls, event: "EdgeEvent") -> bytes:
+        return event.value.to_bytes(1, "little")
+
+
+@dataclass
+class NodeInfoCloud(Packet):
+    metadata: list[PacketFieldMetadata] = field(
+        default_factory=lambda: [
+            PacketFieldMetadata(name="address", length=8),
+            PacketFieldMetadata(name="gateway_address", length=8),
+        ],
+        repr=False,
+    )
+    address: int = 0
+    gateway_address: int = 0
+
+
+@dataclass
+class NodeInfoEdge(Packet):
+    metadata: list[PacketFieldMetadata] = field(
+        default_factory=lambda: [
+            PacketFieldMetadata(name="address", length=8),
+        ],
+        repr=False,
+    )
+    address: int = 0
+
+    def to_cloud(self, gateway_address: int) -> NodeInfoCloud:
+        return NodeInfoCloud(address=self.address, gateway_address=gateway_address)
 
 
 @dataclass
@@ -120,10 +163,7 @@ class FrameStats:
 
             entry = FrameLogEntry(frame=frame, is_test_packet=is_test_packet)
             self.sent.append(entry)
-            while (
-                self.sent
-                and (entry.ts - self.sent[0].ts).total_seconds() > self.window_seconds
-            ):
+            while self.sent and (entry.ts - self.sent[0].ts).total_seconds() > self.window_seconds:
                 self.sent.popleft()
 
     def add_received(self, frame: Frame, is_test_packet: bool):
@@ -136,29 +176,20 @@ class FrameStats:
             self.received.append(entry)
             while (
                 self.received
-                and (entry.ts - self.received[0].ts).total_seconds()
-                > self.window_seconds
+                and (entry.ts - self.received[0].ts).total_seconds() > self.window_seconds
             ):
                 self.received.popleft()
 
-    def sent_count(
-        self, window_secs: int = 0, include_test_packets: bool = True
-    ) -> int:
+    def sent_count(self, window_secs: int = 0, include_test_packets: bool = True) -> int:
         if window_secs == 0:
-            return (
-                self.cumulative_sent
-                if include_test_packets
-                else self.cumulative_sent_non_test
-            )
+            return self.cumulative_sent if include_test_packets else self.cumulative_sent_non_test
 
         now = datetime.now()
         # Windowed count is always for non-test packets.
         entries = [e for e in self.sent if now - e.ts < timedelta(seconds=window_secs)]
         return len(entries)
 
-    def received_count(
-        self, window_secs: int = 0, include_test_packets: bool = True
-    ) -> int:
+    def received_count(self, window_secs: int = 0, include_test_packets: bool = True) -> int:
         if window_secs == 0:
             return (
                 self.cumulative_received
@@ -167,9 +198,7 @@ class FrameStats:
             )
 
         now = datetime.now()
-        entries = [
-            e for e in self.received if now - e.ts < timedelta(seconds=window_secs)
-        ]
+        entries = [e for e in self.received if now - e.ts < timedelta(seconds=window_secs)]
         return len(entries)
 
     def success_rate(self, window_secs: int = 0) -> float:
@@ -197,6 +226,7 @@ class FrameStats:
 @dataclass
 class MariNode:
     address: int
+    gateway_address: int
     last_seen: datetime = field(default_factory=lambda: datetime.now())
     stats: FrameStats = field(default_factory=FrameStats)
     latency_stats: LatencyStats = field(default_factory=LatencyStats)
@@ -207,13 +237,16 @@ class MariNode:
 
     @property
     def is_alive(self) -> bool:
-        return datetime.now() - self.last_seen < timedelta(seconds=10)
+        return datetime.now() - self.last_seen < timedelta(seconds=MARI_TIMEOUT_NODE_IS_ALIVE)
 
     def register_received_frame(self, frame: Frame, is_test_packet: bool):
         self.stats.add_received(frame, is_test_packet)
 
     def register_sent_frame(self, frame: Frame, is_test_packet: bool):
         self.stats.add_sent(frame, is_test_packet)
+
+    def as_node_info_cloud(self) -> NodeInfoCloud:
+        return NodeInfoCloud(address=self.address, gateway_address=self.gateway_address)
 
 
 @dataclass
@@ -223,9 +256,7 @@ class GatewayInfo(Packet):
             PacketFieldMetadata(name="address", length=8),
             PacketFieldMetadata(name="network_id", length=2),
             PacketFieldMetadata(name="schedule_id", length=1),
-            PacketFieldMetadata(
-                name="schedule_stats", length=4 * 8
-            ),  # 4 uint64_t values
+            PacketFieldMetadata(name="schedule_stats", length=4 * 8),  # 4 uint64_t values
         ]
     )
     address: int = 0
@@ -256,9 +287,7 @@ class GatewayInfo(Packet):
     def repr_cell_nice(self, cell: str, is_used: int):
         is_used = bool(int(is_used))
         if cell == "B":
-            return rich.text.Text(
-                "B", style=f'bold white on {"red" if is_used else "indian_red"}'
-            )
+            return rich.text.Text("B", style=f'bold white on {"red" if is_used else "indian_red"}')
         elif cell == "S":
             return rich.text.Text(
                 "S", style=f'bold white on {"purple" if is_used else "medium_purple2"}'
@@ -287,6 +316,18 @@ class GatewayInfo(Packet):
         schedule_data = SCHEDULES.get(self.schedule_id)
         return schedule_data["name"] if schedule_data else "unknown"
 
+    @property
+    def network_id_str(self) -> str:
+        return f"{self.network_id:04X}"
+
+    @property
+    def schedule_uplink_cells(self) -> int:
+        return SCHEDULES.get(self.schedule_id, EMPTY_SCHEDULE_DATA)["max_nodes"]
+
+    @property
+    def schedule_downlink_cells(self) -> int:
+        return SCHEDULES.get(self.schedule_id, EMPTY_SCHEDULE_DATA)["slots"].count("D")
+
 
 @dataclass
 class MariGateway:
@@ -294,39 +335,54 @@ class MariGateway:
     node_registry: dict[int, MariNode] = field(default_factory=dict)
     stats: FrameStats = field(default_factory=FrameStats)
     latency_stats: LatencyStats = field(default_factory=LatencyStats)
+    last_seen: datetime = field(default_factory=lambda: datetime.now())
+
+    def __post_init__(self):
+        self.last_seen = datetime.now()
 
     @property
     def nodes(self) -> list[MariNode]:
         return list(self.node_registry.values())
 
+    @property
+    def nodes_addresses(self) -> list[int]:
+        return list(self.node_registry.keys())
+
+    @property
+    def is_alive(self) -> bool:
+        return datetime.now() - self.last_seen < timedelta(seconds=MARI_TIMEOUT_GATEWAY_IS_ALIVE)
+
     def update(self):
+        """Recurrent bookkeeping. Don't forget to call this periodically on your main loop."""
         self.node_registry = {
             addr: node for addr, node in self.node_registry.items() if node.is_alive
         }
 
     def set_info(self, info: GatewayInfo):
         self.info = info
+        self.last_seen = datetime.now()
 
-    def get_node(self, a: int) -> MariNode | None:
-        return self.node_registry.get(a)
+    def get_node(self, addr: int) -> MariNode | None:
+        return self.node_registry.get(addr)
 
-    def add_node(self, a: int) -> MariNode:
-        if node := self.get_node(a):
+    def add_node(self, addr: int) -> MariNode:
+        if node := self.get_node(addr):
             node.last_seen = datetime.now()
             return node
-        node = MariNode(a)
-        self.node_registry[a] = node
+        node = MariNode(addr, self.info.address)
+        self.node_registry[addr] = node
         return node
 
-    def remove_node(self, a: int) -> MariNode | None:
-        return self.node_registry.pop(a, None)
+    def remove_node(self, addr: int) -> MariNode | None:
+        return self.node_registry.pop(addr, None)
 
-    def update_node_liveness(self, addr: int):
+    def update_node_liveness(self, addr: int) -> MariNode:
         node = self.get_node(addr)
         if node:
             node.last_seen = datetime.now()
         else:
-            self.add_node(addr)
+            node = self.add_node(addr)
+        return node
 
     def register_received_frame(self, frame: Frame, is_test_packet: bool):
         if n := self.get_node(frame.header.source):
