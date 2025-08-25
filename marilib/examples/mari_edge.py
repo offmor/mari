@@ -43,6 +43,7 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame):
 )
 def main(port: str | None, mqtt_host: str, log_dir: str):
     """A basic example of using the MarilibEdge library."""
+
     mari = MarilibEdge(
         on_event,
         serial_interface=SerialAdapter(port),

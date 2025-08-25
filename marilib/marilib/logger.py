@@ -1,6 +1,6 @@
 import csv
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import IO, List, Dict
 
@@ -17,7 +17,7 @@ class MetricsLogger:
     rotation_interval_minutes: int = 1440  # 1 day
     already_logged_setup_parameters: bool = False
     log_interval_seconds: float = 1.0
-    last_log_time: datetime = datetime.now()
+    last_log_time: Dict[int, datetime] = field(default_factory=dict)
 
     def __post_init__(self):
         """
@@ -82,6 +82,8 @@ class MetricsLogger:
         self._gateway_writer = csv.writer(self._gateway_file)
         gateway_header = [
             "timestamp",
+            "gateway_address",
+            "schedule_id",
             "connected_nodes",
             "tx_total",
             "rx_total",
@@ -123,10 +125,11 @@ class MetricsLogger:
         return True
 
     def log_periodic_metrics(self, gateway: MariGateway, nodes: List[MariNode]):
-        if datetime.now() - self.last_log_time >= timedelta(seconds=self.log_interval_seconds):
+        last_log_time = self.last_log_time.get(gateway.info.address, self.segment_start_time)
+        if datetime.now() - last_log_time >= timedelta(seconds=self.log_interval_seconds):
             self.log_gateway_metrics(gateway)
             self.log_all_nodes_metrics(nodes)
-            self.last_log_time = datetime.now()
+            self.last_log_time[gateway.info.address] = datetime.now()
 
     def log_gateway_metrics(self, gateway: MariGateway):
         if not self._log_common() or self._gateway_writer is None:
@@ -135,6 +138,8 @@ class MetricsLogger:
         timestamp = datetime.now().isoformat()
         row = [
             timestamp,
+            f"0x{gateway.info.address:016X}",
+            gateway.info.schedule_id,
             len(gateway.nodes),
             gateway.stats.sent_count(include_test_packets=False),
             gateway.stats.received_count(include_test_packets=False),
