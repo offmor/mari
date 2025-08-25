@@ -34,6 +34,9 @@ sudo apt upgrade
 ### Step 2: Install Marilib repository
 
 NOTE: this repository needs to be cloned or unzipped in `/home/pi/marilib`
+```
+git clone https://github.com/DotBots/marilib.git
+```
 
 ### Step 3: Run Marilib 
 
@@ -43,8 +46,8 @@ to run on boot after detecting that the gateway is connected.
 To install the service on Raspberry Pi run this once:
 ```
 cd /home/pi/marilib/examples/raspberry-pi
-sudo chmod +x run_marilib.sh
-source run_marilib.sh
+sudo chmod +x setup_marilib_service.sh
+source setup_marilib_service.sh
 ```
 
 To launch the TUI:
