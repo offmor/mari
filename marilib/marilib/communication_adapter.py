@@ -1,4 +1,5 @@
 import base64
+from urllib.parse import urlparse
 import paho.mqtt.client as mqtt
 
 from abc import ABC, abstractmethod
@@ -60,21 +61,28 @@ class SerialAdapter(CommunicationAdapterBase):
 class MQTTAdapter(CommunicationAdapterBase):
     """Class used to interface with MQTT."""
 
-    def __init__(self, host, port, is_edge: bool):
+    def __init__(self, host, port, is_edge: bool, use_tls: bool = False):
         self.host = host
         self.port = port
         self.is_edge = is_edge
         self.network_id = None
         self.client = None
         self.on_data_received = None
+        self.use_tls = use_tls
         # optimize qos for throughput
         # 0 = no delivery guarantee, 1 = at least once, 2 = exactly once
         self.qos = 0
 
     @classmethod
-    def from_host_port(cls, host_port: str, is_edge: bool):
-        host, port = host_port.split(":")
-        return cls(host, int(port), is_edge)
+    def from_url(cls, url: str, is_edge: bool):
+        url = urlparse(url)
+        host, port = url.netloc.split(":")
+        if url.scheme == "mqtt":
+            return cls(host, int(port), is_edge, use_tls=False)
+        elif url.scheme == "mqtts":
+            return cls(host, int(port), is_edge, use_tls=True)
+        else:
+            raise ValueError(f"Invalid MQTT URL: {url} (must start with mqtt:// or mqtts://)")
 
     # ==== public methods ====
 
@@ -114,7 +122,8 @@ class MQTTAdapter(CommunicationAdapterBase):
             mqtt.CallbackAPIVersion.VERSION2,
             protocol=mqtt.MQTTProtocolVersion.MQTTv5,
         )
-        # self.client.tls_set_context(context=None)  # Commented out for plain MQTT
+        if self.use_tls:
+            self.client.tls_set_context(context=None)
         self.client.on_log = self._on_log
         self.client.on_connect = self._on_connect_edge if self.is_edge else self._on_connect_cloud
         self.client.on_message = self._on_message_edge if self.is_edge else self._on_message_cloud
