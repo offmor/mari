@@ -18,10 +18,10 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame | GatewayInfo):
 
 @click.command()
 @click.option(
-    "--mqtt-host",
+    "--mqtt-url",
     "-m",
     type=str,
-    default="localhost:1883",
+    default="mqtt://localhost:1883",
     show_default=True,
     help="MQTT broker to use",
 )
@@ -39,12 +39,12 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame | GatewayInfo):
     help="Directory to save metric log files.",
     type=click.Path(),
 )
-def main(mqtt_host: str, network_id: int, log_dir: str):
+def main(mqtt_url: str, network_id: int, log_dir: str):
     """A basic example of using the MariLibCloud library."""
 
     mari = MarilibCloud(
         on_event,
-        mqtt_interface=MQTTAdapter.from_host_port(mqtt_host, is_edge=False),
+        mqtt_interface=MQTTAdapter.from_url(mqtt_url, is_edge=False),
         logger=MetricsLogger(
             log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
         ),
