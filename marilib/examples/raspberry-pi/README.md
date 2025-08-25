@@ -42,7 +42,7 @@ to run on boot after detecting that the gateway is connected.
 
 To install the service on Raspberry Pi run this once:
 ```
-cd /home/pi/marilib/raspberry_pi
+cd /home/pi/marilib/examples/raspberry-pi
 sudo chmod +x run_marilib.sh
 source run_marilib.sh
 ```

@@ -6,7 +6,7 @@ sudo chmod +x install_marilib.sh
 source install_marilib.sh
 
 # === Step 3: bind the gateway to systemlink port /dev/ttyACM10 ===
-cd /home/pi/marilib/raspberry_pi
+cd /home/pi/marilib/examples/raspberry-pi
 sudo chmod +x bind_interface.sh
 source bind_interface.sh
 
