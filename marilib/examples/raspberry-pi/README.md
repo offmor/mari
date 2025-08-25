@@ -56,9 +56,10 @@ until tmux has-session -t marilib 2>/dev/null; do sleep 0.2; done; tmux attach -
 ```
 
 ### NOTES:
-- Do not plug the nRF while the Raspberry Pi (rPi) is on, always plug in
-when the rPi is turned off.
-- Do not unplug the nRF directly, you need to eject it or remove it when the 
+- It will take some seconds for the TUI to launch as the gateway port is being prepared.
+- Do not plug the nRF or turn it on while the Raspberry Pi (rPi) is on, always plug in and 
+turn it onwhen the rPi is turned off.
+- Do not unplug the nRF or turn it off directly, you need to eject it or remove it when the 
 Raspberry Pi is off or you will cause damage to the rPi and unpredicted 
 behavior when running the TUI (it will crash).
 
