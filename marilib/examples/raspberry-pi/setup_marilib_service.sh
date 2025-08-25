@@ -11,7 +11,7 @@ sudo chmod +x bind_interface.sh
 source bind_interface.sh
 
 # === Step 4: create the service to run marilib on boot once the gateway is connected ===
-cat <<'EOF' | sudo tee /etc/systemd/system/setup_marilib_service.service
+cat <<'EOF' | sudo tee /etc/systemd/system/setup_marilib.service
 
 [Unit]
 Description=run marilib on boot
@@ -42,7 +42,7 @@ WantedBy=multi-user.target
 EOF
 
 # === Step 5:  create a path unit that triggers when the gateway device appears ===
-cat <<'EOF' | sudo tee /etc/systemd/system/setup_marilib_service.path
+cat <<'EOF' | sudo tee /etc/systemd/system/setup_marilib.path
 [Unit]
 Description=Launch marilib when the gateway appears on /dev/ttyACM10
 
@@ -55,5 +55,5 @@ EOF
 
 # reload systemd units and enable
 sudo systemctl daemon-reload
-sudo systemctl enable --now setup_marilib_service.path
-sudo systemctl enable setup_marilib_service.service
+sudo systemctl enable --now setup_marilib.path
+sudo systemctl enable setup_marilib.service
