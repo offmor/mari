@@ -60,6 +60,9 @@ until tmux has-session -t marilib 2>/dev/null; do sleep 0.2; done; tmux attach -
 ```
 
 ### NOTES:
+- If the gateway port (ttyACM10) exists but is not available for 120 seconds while it should take less 
+than 10 seconds for it to be available, the service will stop and wil not restart so you should
+check connectivity and reboot.
 - It will take some seconds for the TUI to launch as the gateway port is being prepared.
 - Do not plug the nRF or turn it on while the Raspberry Pi (rPi) is on, always plug in and 
 turn it onwhen the rPi is turned off.
