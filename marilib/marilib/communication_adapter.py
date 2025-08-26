@@ -127,13 +127,8 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client.on_log = self._on_log
         self.client.on_connect = self._on_connect_edge if self.is_edge else self._on_connect_cloud
         self.client.on_message = self._on_message_edge if self.is_edge else self._on_message_cloud
-        try:
-            self.client.connect(self.host, self.port, 60)
-            print(f"[yellow]Connected to MQTT broker on {self.host}:{self.port}[/]")
-        except Exception as e:
-            print(f"[red]Error connecting to MQTT broker: {e}[/]")
-            print(f"[red]Host: {self.host}, Port: {self.port}[/]")
-            return
+        self.client.connect(self.host, self.port, 60)
+        print(f"[yellow]Connected to MQTT broker on {self.host}:{self.port}[/]")
         self.client.loop_start()
 
     def close(self):
