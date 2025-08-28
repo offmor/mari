@@ -1,6 +1,15 @@
+# this only works on raspberry pi
+# to install the emulator sense_emu library:
+# - sudo apt-get install python3-gi python3-gi-cairo
+# - pip install sense-emu
+# to install the real sense_hat library:
+# - sudo apt-get install sense-hat
+
 from sense_emu import SenseHat
 import threading
 import time
+
+# ======================= Code for driving the sense hat =======================
 
 s = SenseHat()
 # s.set_rotation(90)
@@ -16,7 +25,7 @@ p = [191, 0, 255]
 s.clear(w)
 
 # ---------- config ----------
-nb_max = 102  # maximum number of nodes for this schedule
+nb_max = 102  # maximum number of nodes for this schedule -- will come from marilib
 nb_row = 8  # number of pixels in a row
 bg = w  # background of the bottom 6*6 area
 nb_nodes_per_pixel = nb_max // nb_row
@@ -105,28 +114,6 @@ def display_num_nodes_thread():
         display_num_nodes()
 
 
-# just for testing
-def node_join(n: int):
-    """
-    Safely add n nodes and notify the drawer.
-    """
-    global nb_nodes
-    with state_lock:
-        nb_nodes = min(nb_nodes + n, nb_max)
-    node_changed.set()
-
-
-# just for testing
-def node_leave(n: int):
-    """
-    Safely remove n nodes and notify the drawer.
-    """
-    global nb_nodes
-    with state_lock:
-        nb_nodes = max(nb_nodes - n, 0)
-    node_changed.set()
-
-
 def number_to_columns(rows):
     """Convert 6 rows of 6-bit ints (a number) to a list of 6 columns of pixels
     (each column is a list of 6 booleans
@@ -208,11 +195,37 @@ def message_thread(
         time.sleep(0.2)
 
 
+# ========================= functions just for testing =========================
+
+
+def node_join(n: int):
+    """
+    Safely add n nodes and notify the drawer.
+    """
+    global nb_nodes
+    with state_lock:
+        nb_nodes = min(nb_nodes + n, nb_max)
+    node_changed.set()
+
+
+# just for testing
+def node_leave(n: int):
+    """
+    Safely remove n nodes and notify the drawer.
+    """
+    global nb_nodes
+    with state_lock:
+        nb_nodes = max(nb_nodes - n, 0)
+    node_changed.set()
+
+
+# ================================ main function ===============================
+
 if __name__ == "__main__":
     scroll = True
     speed = 0.1
-    schedule = 5
-    net_id = 1200
+    schedule = 5  # will come from marilib
+    net_id = 1200  # will come from marilib
     scrolling_times = 3
 
     threading.Thread(target=display_num_nodes_thread, daemon=True).start()
