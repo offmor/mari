@@ -1,5 +1,6 @@
 ## Overview:
-This is the setup for mira gateway
+This is the setup for Mari gateway.
+
 ## Hardware:
 - nRF5340
 - Raspberry Pi 5 
@@ -43,23 +44,26 @@ git clone https://github.com/DotBots/marilib.git
 We run marilib on the Raspberry Pi inside a systemd service
 to run on boot after detecting that the gateway is connected.
 
-To install the service on Raspberry Pi run this once:
+Run this once to install the service on Raspberry Pi:
 ```
 cd /home/pi/marilib/examples/raspberry-pi
 sudo chmod +x setup_marilib_service.sh
 source setup_marilib_service.sh
 ```
+
 then reboot:
+
 ```
 sudo reboot
 ```
 
 To launch the TUI:
+
 ```
 until tmux has-session -t marilib 2>/dev/null; do sleep 0.2; done; tmux attach -t marilib
 ```
 
-### NOTES:
+### Notes:
 - If the gateway port (ttyACM10) exists but is not available for 120 seconds while it should take less 
 than 10 seconds for it to be available, the service will stop and wil not restart so you should
 check connectivity and reboot.
