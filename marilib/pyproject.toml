@@ -47,7 +47,8 @@ classifiers = [
 "Bug Tracker" = "https://github.com/DotBots/marilib/issues"
 
 [project.scripts]
-marilib = "marilib.cli.main:main"
+mari-edge = "marilib.cli.edge:main"
+mari-cloud = "marilib.cli.cloud:main"
 
 [tool.ruff]
 lint.select = ["E", "F", "W"]

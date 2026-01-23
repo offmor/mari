@@ -388,7 +388,7 @@ class GatewayInfo(Packet):
         schedule_data = SCHEDULES.get(self.schedule_id)
         if not schedule_data:
             return ""
-        all_bits = format(self.schedule_stats, f"0{4*8*8}b")
+        all_bits = format(self.schedule_stats, f"0{4 * 8 * 8}b")
         all_bits = [all_bits[i : i + 8] for i in range(0, len(all_bits), 8)]
         all_bits.reverse()
         # print(">>>", reversed(all_bits[0].split("")))
@@ -404,18 +404,18 @@ class GatewayInfo(Packet):
     def repr_cell_nice(self, cell: str, is_used: int):
         is_used = bool(int(is_used))
         if cell == "B":
-            return rich.text.Text("B", style=f'bold white on {"red" if is_used else "indian_red"}')
+            return rich.text.Text("B", style=f"bold white on {'red' if is_used else 'indian_red'}")
         elif cell == "S":
             return rich.text.Text(
-                "S", style=f'bold white on {"purple" if is_used else "medium_purple2"}'
+                "S", style=f"bold white on {'purple' if is_used else 'medium_purple2'}"
             )
         elif cell == "D":
             return rich.text.Text(
-                "D", style=f'bold white on {"green" if is_used else "sea_green3"}'
+                "D", style=f"bold white on {'green' if is_used else 'sea_green3'}"
             )
         elif cell == "U":
             return rich.text.Text(
-                "U", style=f'bold white on {"yellow" if is_used else "light_yellow3"}'
+                "U", style=f"bold white on {'yellow' if is_used else 'light_yellow3'}"
             )
 
     def repr_schedule_cells_with_colors(self):

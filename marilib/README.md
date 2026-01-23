@@ -13,14 +13,14 @@ MariLib provides a stateful class with gateway and node information, network sta
 To run with a gateway connected via UART:
 ```bash
 # for example, using the Inria Argus MQTT broker
-(.venv) $ python examples/mari_edge.py -m mqtts://argus.paris.inria.fr:8883
+(.venv) $ mari-edge -m mqtts://argus.paris.inria.fr:8883
 ```
-You can see how it works using `examples/mari_edge.py --help`.
+You can see how it works using `mari-edge --help`.
 
 To run with a gateway connected via MQTT:
 ```bash
 # for example, using the Inria Argus MQTT broker
-(.venv) $ python examples/mari_cloud.py -n 0x0100 -m mqtts://argus.paris.inria.fr:8883
+(.venv) $ mari-cloud -n 0x0100 -m mqtts://argus.paris.inria.fr:8883
 ```
 
 ## Setup and dependencies
