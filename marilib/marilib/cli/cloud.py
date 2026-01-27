@@ -45,7 +45,15 @@ def on_event(event: EdgeEvent, event_data: MariNode | Frame | GatewayInfo):
     help="Directory to save metric log files.",
     type=click.Path(),
 )
-def main(mqtt_url: str, network_id: int, send_periodic: float, log_dir: str):
+@click.option(
+    "--max-gateways-tui",
+    "-g",
+    default=5,
+    show_default=True,
+    help="Maximum number of gateways to display in the TUI.",
+    type=int,
+)
+def main(mqtt_url: str, network_id: int, send_periodic: float, log_dir: str, max_gateways_tui: int):
     """A basic example of using the MariLibCloud library."""
 
     mari = MarilibCloud(
@@ -55,7 +63,7 @@ def main(mqtt_url: str, network_id: int, send_periodic: float, log_dir: str):
             log_dir_base=log_dir, rotation_interval_minutes=1440, log_interval_seconds=1.0
         ),
         network_id=network_id,
-        tui=MarilibTUICloud(),
+        tui=MarilibTUICloud(max_tables=max_gateways_tui),
         main_file=__file__,
     )
 
