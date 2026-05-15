@@ -45,9 +45,10 @@ typedef struct {
     uint32_t        rx_count;
 } gateway_vars_t;
 
-typedef struct {
-    uint32_t magic;   // to detect if config is valid
-    uint32_t net_id;  // Mari network ID
+typedef struct __attribute__((packed)) {
+    uint32_t magic;       // to detect if config is valid (must equal MARI_APP_CONFIG_MAGIC_VALUE)
+    uint32_t has_net_id;  // 1 if net_id is provisioned; otherwise fall back to the default
+    uint32_t net_id;      // Mari network ID, meaningful only when has_net_id == 1
 } mari_app_config_t;
 
 //=========================== variables ========================================
@@ -72,7 +73,7 @@ static void _to_uart_gateway_loop(void) {
 static uint16_t _net_id(void) {
     const mari_app_config_t *cfg = (const mari_app_config_t *)MARI_APP_NET_CONFIG_START_ADDRESS;
 
-    if (cfg->magic != MARI_APP_CONFIG_MAGIC_VALUE) {
+    if (cfg->magic != MARI_APP_CONFIG_MAGIC_VALUE || cfg->has_net_id != 1) {
         // No network config found, use default network ID
         return MARI_NET_ID_DEFAULT;
     }
