@@ -1,4 +1,12 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
   - repo: local
     hooks:
       - id: clang-format-check
@@ -17,3 +25,15 @@ repos:
         entry: grep MARI_NET_ID_DEFAULT firmware/app/03app_node/main.c
         language: system
         pass_filenames: false
+      - id: hatch-fmt
+        name: hatch fmt
+        entry: hatch fmt
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black", "--line-length", "79"]
