@@ -1,0 +1,81 @@
+## Overview:
+This is the setup for Mari gateway.
+
+## Hardware:
+- nRF5340
+- Raspberry Pi 5 
+
+## Getting Started
+### Step 1: Flash Operating System to the micro-SD card
+
+Depending on your computer operating system, the installation procedure can change. 
+Please follow the instruction on the Raspbian website: https://www.raspberrypi.com/software/
+
+From the link above download and install the Raspberry Pi Imager.
+
+In the Raspberry Pi Imager select:
+- Device           - Raspberry Pi 5,  
+- Operating System - Raspberry Pi OS (64-BIT)
+- Storage          - micro-SD card 64 GO 
+
+After flashing, insert the micro-SD into the Raspberry Pi. 
+Power ON the Raspberry and connect it to a screen with an HDMI cable, and connect a mouse and a keyboard.
+
+On the first boot of the OS you need to fill in the location and language info, username and password.
+
+For the username type: `pi`
+For the password type: `raspberry`
+
+Then install the updates with:
+```
+sudo apt update
+sudo apt upgrade
+```
+
+### Step 2: Install Marilib repository
+
+NOTE: this repository needs to be cloned or unzipped in `/home/pi/marilib`
+```
+git clone https://github.com/DotBots/marilib.git
+```
+
+### Step 3: Run Marilib 
+
+We run marilib on the Raspberry Pi inside a systemd service
+to run on boot after detecting that the gateway is connected.
+
+Run this once to install the service on Raspberry Pi:
+```
+cd /home/pi/marilib/examples/raspberry-pi
+sudo chmod +x setup_marilib_service.sh
+source setup_marilib_service.sh
+```
+
+then reboot:
+
+```
+sudo reboot
+```
+
+To launch the TUI:
+
+```
+until tmux has-session -t marilib 2>/dev/null; do sleep 0.2; done; tmux attach -t marilib
+```
+
+### Notes:
+- If the gateway port (ttyACM10) exists but is not available for 120 seconds while it should take less 
+than 10 seconds for it to be available, the service will stop and wil not restart so you should
+check connectivity and reboot.
+- It will take some seconds for the TUI to launch as the gateway port is being prepared.
+- Do not plug the nRF or turn it on while the Raspberry Pi (rPi) is on, always plug in and 
+turn it onwhen the rPi is turned off.
+- Do not unplug the nRF or turn it off directly, you need to eject it or remove it when the 
+Raspberry Pi is off or you will cause damage to the rPi and unpredicted 
+behavior when running the TUI (it will crash).
+- On boot, If you get a message that the gateway was ejected even though it is on, reboot ``` sudo reboot ```;  
+as in this the TUI won't connect to the gateway because the gateway ejected itself or the rPi didn't shut down correctly 
+so the gateway won't be seen until you reboot.
+- Always always use ``` sudo shutdown -h now ``` to turn off the Raspberry Pi, if you unplug the power cable manually you will
+corrupt the rPi and cause unpredicted behavior.
+

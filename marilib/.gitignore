@@ -1,0 +1,49 @@
+# Segger Studio specific files
+
+*.emSession
+*.jlink
+
+# Python compiled files
+*.pyc
+
+# Git conflict files
+*.orig
+
+# Visual Studio specific files
+.vscode/
+
+# Segger Studio output directory
+Output/
+
+# Python package dist
+dist/
+
+# Virtual env folder
+.venv/
+
+# Tox
+.tox/
+
+# Venv files
+.venv*
+venv
+
+# Python cache files
+__pycache__/
+
+# Build files
+build/
+
+# Distribution files
+dist/
+
+# Coverage reports
+.coverage
+coverage.*
+
+# do not commit logs
+logs_metrics
+logs
+
+# MacOS files
+.DS_Store

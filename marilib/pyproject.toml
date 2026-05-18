@@ -1,0 +1,81 @@
+[build-system]
+requires = [
+    "hatchling>=1.4.1",
+]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+include = [
+    "*.py"
+]
+exclude = [
+]
+
+[tool.hatch.version]
+path = "marilib/__init__.py"
+
+[project]
+# pypi complains that "the name 'marilib' is too similar to other packages"
+# so we use a -pkg postfix to circunvent that
+name = "marilib-pkg"
+dynamic = ["version"]
+authors = [
+    { name="Geovane Fedrecheski", email="geovane.fedrecheski@inria.fr" },
+]
+dependencies = [
+    "click          >= 8.1.7",
+    "pyserial       >= 3.5",
+    "rich           >= 14.0.0",
+    "structlog      >= 24.4.0",
+    "tqdm           >= 4.66.5",
+    "paho-mqtt      >= 2.1.0",
+]
+description = "MariLib is a Python library for interacting with the Mari network."
+readme = "README.md"
+license = { text="BSD" }
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/DotBots/marilib"
+"Bug Tracker" = "https://github.com/DotBots/marilib/issues"
+
+[project.scripts]
+mari-edge = "marilib.cli.edge:main"
+mari-cloud = "marilib.cli.cloud:main"
+
+[tool.ruff]
+lint.select = ["E", "F", "W"]
+line-length = 100
+lint.ignore = ["E501", "E722"]
+
+[tool.isort]
+multi_line_output = 3  # Use Vertical Hanging Indent
+profile = "black"
+
+[tool.black]
+line-length = 100
+skip-string-normalization = true
+
+[tool.hatch.envs.hatch-test]
+dependencies = [
+  "pytest",
+  "pytest-cov",
+]
+# List of paths to test
+default-args = ["tests", "marilib"]
+# Extra arguments for pytest
+extra-args = [
+    "-vv",
+    "--color=yes",
+    "--doctest-modules",
+    "--cov=marilib",
+    "--cov-report=term-missing",
+    "--cov-report=xml",
+]
