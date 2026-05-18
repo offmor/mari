@@ -7,6 +7,9 @@ on:
       tags:
         - '*'
     pull_request:
+      paths:
+        - 'firmware/**'
+        - '.github/workflows/clang-format.yml'
   
 jobs:
   check-format:
@@ -24,5 +27,5 @@ jobs:
 
       - name: Check C/H files formatting (skip nRF)
         run: |
-          find app drv mari \( -name "*.c" -o -name "*.h" \) \
+          find firmware/app firmware/drv firmware/mari \( -name "*.c" -o -name "*.h" \) \
             -exec clang-format-15 --dry-run --Werror {} +

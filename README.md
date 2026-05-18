@@ -1,67 +1,136 @@
-# Mari 💫 👀
+# Mari 💫 👀 🐍
 
 Mari is a lightweight wireless connectivity solution designed for dense IoT networks, with a focus on supporting real-time interactions and fast over-the-air (OTA) updates.
 
 The driving use case for the design of Mari is the OpenSwarm Testbed of 1,000 [DotBots](https://github.com/DotBots/DotBot-firmware). Mari is suitable for any dense IoT deployment requiring low-latency communication.
 
+This repository ships **two halves**:
+
+- [`firmware/`](firmware/) — the C firmware that implements the Mari TSCH-over-BLE link layer on Nordic nRF52840 / nRF5340.
+- [`marilib/`](marilib/) — the Python control plane (`mari-edge`, `mari-cloud` CLI agents) that talks to a Mari gateway over UART or MQTT and renders a Rich-based real-time TUI.
+
+Each half is self-contained: its build config, tests, and examples live in its own directory.
+
 ## Key Features
 
-- **TSCH over BLE**: Implements Time-Synchronized Channel Hopping (TSCH) over Bluetooth Low Energy (BLE) 2 Mbps PHY
-- **Multi-Gateway Architecture**: Allows scaling the network by adding more gateways
-- **Non-Coordinated Gateways**: Gateways are independent, so the infrastructure setup is very simple
-- **Fast Handovers**: Enables quick transitions between gateways as nodes move
-- **Low-Power Operation**: Designed for energy-efficient operation in battery-powered devices (BLE radio)
-- **Real-Time Communication**: Achieves 100-150 ms average latency with 100 nodes per gateway
-- **Reasonable Throughput for OTAP**: About 10 Kb/s downlink
-- **Quick Network Join**: Best and worst -case join time of 150 ms and 6 seconds, respectively
-- **Dense Network Support**: Scales for networks with hundreds to thousands of nodes
+- **TSCH over BLE**: Time-Synchronized Channel Hopping (TSCH) over Bluetooth Low Energy 2 Mbps PHY
+- **Multi-Gateway Architecture**: scale by adding more gateways
+- **Non-Coordinated Gateways**: gateways are independent — infrastructure setup is simple
+- **Fast Handovers**: quick transitions between gateways as nodes move
+- **Low-Power Operation**: energy-efficient for battery-powered devices
+- **Real-Time Communication**: 100–150 ms average latency with 100 nodes per gateway
+- **Reasonable Throughput for OTAP**: about 10 Kb/s downlink
+- **Quick Network Join**: 150 ms best-case, 6 s worst-case
+- **Dense Network Support**: scales for hundreds to thousands of nodes
 
-## Project Structure
+## Layout
 
 ```
 mari/
-├── app/                    # Example applications and tests
-│   ├── 03app_gateway/     # Gateway implementation example
-│   ├── 03app_node/        # Node implementation example
-│   └── ...                # Various test applications
-├── drv/                   # Hardware drivers
-├── mari/                  # Core protocol implementation
-└── nRF/                   # Nordic Semiconductor SDK files
+├── firmware/       # C firmware (mari TSCH-over-BLE link layer)
+│   ├── app/        # Applications and tests
+│   ├── drv/        # Hardware drivers
+│   ├── mari/       # Core protocol implementation
+│   └── nRF/        # Nordic Semiconductor SDK files
+└── marilib/        # Python package + tests + examples
+    ├── marilib/    # The importable Python package
+    ├── tests/
+    ├── examples/
+    ├── pyproject.toml
+    └── install_marilib.sh
 ```
 
-## Example Usage
+## Firmware (mari)
 
-Gateway initialization:
+### Hardware support
+
+Validated on Nordic nRF52833, nRF52840, and nRF5340 (dual-core; gateway on the network core).
+
+### Build
+
+```bash
+cd firmware
+make node        # nrf52840dk node
+make gateway     # nRF5340 net-core gateway
+make all         # default
+make docker      # CI path (Docker-wrapped SEGGER ES)
+```
+
+The project uses SEGGER Embedded Studio `.emProject` files, `clang-format` v15, and `pre-commit` (root config).
+
+### Example usage
+
 ```c
+// Gateway init
 mari_init(MARI_GATEWAY, MARI_NET_ID_DEFAULT, schedule, event_callback);
-```
 
-Node initialization:
-```c
+// Node init
 mari_init(MARI_NODE, MARI_NET_ID_PATTERN_ANY, schedule, event_callback);
 ```
 
-## Hardware Support
+To run a Mari network on your computer, follow the wiki: https://github.com/DotBots/mari/wiki/Getting-started#running-mari-network-on-your-computer
 
-Mari has been validated with the following Nordic Semiconductor chips:
-- nRF52833
-- nRF52840
-- nRF5340
+## marilib (Python control plane)
 
-## Development Environment
+### Install
 
-The project includes configuration files for:
-- Segger Embedded Studio (`.emProject` files)
-- Code formatting (`.clang-format` file, please use `clang-format` version 15)
-- Git hooks (`.pre-commit-config.yaml`)
+```bash
+cd marilib
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+```
 
-## Getting Started
+For a Raspberry Pi edge node, `./install_marilib.sh` (inside `marilib/`) bootstraps a venv and installs the package.
 
-1- To run Mari network on your computer follow the instructions at : https://github.com/DotBots/mari/wiki/Getting-started#running-mari-network-on-your-computer
+### Run
+
+```bash
+mari-edge  -m mqtts://argus.paris.inria.fr:8883           # UART-attached gateway
+mari-cloud -n 0x0100 -m mqtts://argus.paris.inria.fr:8883 # cloud bridge over MQTT
+```
+
+`mari-edge --help` documents all flags. The TUI shows real-time network state with an ASN-decomposed latency breakdown (`host/dl/app/ul`) and a `Q (sf)` column for per-node uplink-queue depth — see [`marilib/AGENTS.md`](marilib/AGENTS.md) for column semantics.
+
+### Minimal Python example
+
+```python
+import time
+from marilib.marilib import MarilibEdge
+from marilib.serial_uart import get_default_port
+
+def main():
+    mari = MarilibEdge(lambda event, data: print(event.name, data), get_default_port())
+    while True:
+        for node in mari.gateway.nodes:
+            mari.send_frame(dst=node.address, payload=b"A" * 3)
+        time.sleep(0.25)
+
+if __name__ == "__main__":
+    main()
+```
+
+More examples in [`marilib/examples/`](marilib/examples/).
+
+### Tests / format / build
+
+```bash
+cd marilib
+hatch test                                   # pytest --doctest-modules --cov=marilib
+hatch fmt --check
+hatch build
+```
+
+## Branch policy
+
+This repository uses **gitflow**: `develop` is the integration branch, `main` is releases. Feature branches off `develop`; PRs target `develop`.
+
+## Agent guidance
+
+If you are an AI coding agent working in this repo, read [`AGENTS.md`](AGENTS.md) (cross-cutting), [`firmware/AGENTS.md`](firmware/AGENTS.md), and [`marilib/AGENTS.md`](marilib/AGENTS.md).
 
 ## License
 
-This project is licensed under the terms included in the LICENSE file.
+Apache 2.0 — see [LICENSE](LICENSE).
 
 ## Publications
 
