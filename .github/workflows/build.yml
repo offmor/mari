@@ -17,3 +17,4 @@ jobs:
         uses: actions/checkout@v4
       - name: Build applications
         run: make docker
+        working-directory: firmware
