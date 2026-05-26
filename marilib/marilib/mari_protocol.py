@@ -190,26 +190,24 @@ class MetricsProbePayload(Packet):
         if probe_stats_start_epoch is None:
             # if no epoch is provided, just wait a bit
             return -1
-        else:
-            # if epoch is provided, subtract the epoch values from the current values
-            if probe_stats_start_epoch.asn == 0:
-                return 0
-            # if a packet was received at the gatweway, it should also be received at the edge (otherwise, it's a loss)
-            gw_rx_count = self.gw_rx_count - probe_stats_start_epoch.gw_rx_count
-            edge_rx_count = self.edge_rx_count - probe_stats_start_epoch.edge_rx_count
+        # if epoch is provided, subtract the epoch values from the current values
+        if probe_stats_start_epoch.asn == 0:
+            return 0
+        # if a packet was received at the gatweway, it should also be received at the edge (otherwise, it's a loss)
+        gw_rx_count = self.gw_rx_count - probe_stats_start_epoch.gw_rx_count
+        edge_rx_count = self.edge_rx_count - probe_stats_start_epoch.edge_rx_count
         return self.pdr_saturated(edge_rx_count, gw_rx_count)
 
     def pdr_downlink_uart(self, probe_stats_start_epoch=None) -> float:
         if probe_stats_start_epoch is None:
             # if no epoch is provided, just wait a bit
             return -1
-        else:
-            # if epoch is provided, subtract the epoch values from the current values
-            if probe_stats_start_epoch.asn == 0:
-                return 0
-            # if a packet was sent at the edge, it should also be sent at the gateway (otherwise, it's a loss)
-            gw_tx_count = self.gw_tx_count - probe_stats_start_epoch.gw_tx_count
-            edge_tx_count = self.edge_tx_count - probe_stats_start_epoch.edge_tx_count
+        # if epoch is provided, subtract the epoch values from the current values
+        if probe_stats_start_epoch.asn == 0:
+            return 0
+        # if a packet was sent at the edge, it should also be sent at the gateway (otherwise, it's a loss)
+        gw_tx_count = self.gw_tx_count - probe_stats_start_epoch.gw_tx_count
+        edge_tx_count = self.edge_tx_count - probe_stats_start_epoch.edge_tx_count
         return self.pdr_saturated(gw_tx_count, edge_tx_count)
 
     def rssi_at_node_dbm(self) -> int:
@@ -257,24 +255,6 @@ class MetricsResponsePayload(Packet):
 
 
 @dataclass
-class HeaderStats(Packet):
-    """Dataclass that holds MAC header stats."""
-
-    metadata: list[PacketFieldMetadata] = dataclasses.field(
-        default_factory=lambda: [
-            PacketFieldMetadata(name="rssi", disp="rssi", length=1),
-        ]
-    )
-    rssi: int = 0
-
-    @property
-    def rssi_dbm(self) -> int:
-        if self.rssi > 127:
-            return self.rssi - 255
-        return self.rssi
-
-
-@dataclass
 class Header(Packet):
     """Dataclass that holds MAC header fields."""
 
@@ -303,21 +283,16 @@ class Frame:
     """Data class that holds a payload packet."""
 
     header: Header = None
-    stats: HeaderStats = dataclasses.field(default_factory=HeaderStats)
     payload: bytes = b""
 
     def from_bytes(self, bytes_):
         self.header = Header().from_bytes(bytes_[0:20])
         if len(bytes_) > 20:
-            self.stats = HeaderStats().from_bytes(bytes_[20:21])
-            if len(bytes_) > 21:
-                self.payload = bytes_[21:]
+            self.payload = bytes_[20:]
         return self
 
     def to_bytes(self, byteorder="little") -> bytes:
-        header_bytes = self.header.to_bytes(byteorder)
-        stats_bytes = self.stats.to_bytes(byteorder)
-        return header_bytes + stats_bytes + self.payload
+        return self.header.to_bytes(byteorder) + self.payload
 
     @property
     def is_test_packet(self) -> bool:

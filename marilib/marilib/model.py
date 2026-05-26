@@ -3,6 +3,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import IntEnum
+
 import rich
 
 from marilib.mari_protocol import Frame, MetricsProbePayload
@@ -197,14 +198,13 @@ class FrameStats:
         now = datetime.now()
         if include_test_packets:
             return len([e for e in self.sent if now - e.ts < timedelta(seconds=window_secs)])
-        else:
-            return len(
-                [
-                    e
-                    for e in self.sent
-                    if now - e.ts < timedelta(seconds=window_secs) and not e.frame.is_test_packet
-                ]
-            )
+        return len(
+            [
+                e
+                for e in self.sent
+                if now - e.ts < timedelta(seconds=window_secs) and not e.frame.is_test_packet
+            ]
+        )
 
     def received_count(self, window_secs: int = 0, include_test_packets: bool = True) -> int:
         if window_secs == 0:
@@ -233,18 +233,14 @@ class FrameStats:
         return min(r / s, 1.0)
 
     def received_rssi_dbm(self, window_secs: int = 0) -> float:
-        if not self.received:
-            return 0
-
-        if window_secs == 0:
-            return int(self.received[-1].frame.stats.rssi_dbm) if self.received else 0
-        n = datetime.now()
-        d = [
-            e.frame.stats.rssi_dbm
-            for e in self.received
-            if (n - e.ts < timedelta(seconds=window_secs))
-        ]
-        return int(sum(d) / len(d) if d else 0)
+        """Latest RSSI (dBm) measured at this node, sourced from the most
+        recent MetricsProbePayload. The `window_secs` parameter is kept
+        for API stability but ignored — historical per-frame RSSI is no
+        longer carried in the wire header (the byte was removed; RSSI
+        now travels only in periodic metrics probes)."""
+        del window_secs
+        latest = self.received_rssi_dbm_probe_node()
+        return float(latest) if latest is not None else 0.0
 
 
 @dataclass
@@ -458,15 +454,15 @@ class GatewayInfo(Packet):
         is_used = bool(int(is_used))
         if cell == "B":
             return rich.text.Text("B", style=f"bold white on {'red' if is_used else 'indian_red'}")
-        elif cell == "S":
+        if cell == "S":
             return rich.text.Text(
                 "S", style=f"bold white on {'purple' if is_used else 'medium_purple2'}"
             )
-        elif cell == "D":
+        if cell == "D":
             return rich.text.Text(
                 "D", style=f"bold white on {'green' if is_used else 'sea_green3'}"
             )
-        elif cell == "U":
+        if cell == "U":
             return rich.text.Text(
                 "U", style=f"bold white on {'yellow' if is_used else 'light_yellow3'}"
             )

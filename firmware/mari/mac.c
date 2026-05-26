@@ -600,13 +600,14 @@ static void activity_ri4(uint32_t ts) {
         fix_drift(mac_vars.received_packet.start_ts);
     }
 
-    // now that we know it's a mari packet, store some info about it
+    // now that we know it's a mari packet, store some info about it.
+    // RSSI is kept in mac_vars.received_packet.rssi for local handover
+    // logic; per-frame RSSI is no longer carried in the wire header (use
+    // MetricsProbePayload.rssi_at_{node,gw} for host-side reporting).
     mac_vars.received_packet.channel = mac_vars.current_slot_info.channel;
     mac_vars.received_packet.rssi    = mr_radio_rssi();
     mac_vars.received_packet.end_ts  = ts;
     mac_vars.received_packet.asn     = mac_vars.asn;
-
-    header->stats.rssi = mr_radio_rssi();
 
     mr_handle_packet(mac_vars.received_packet.packet, mac_vars.received_packet.packet_len);
 

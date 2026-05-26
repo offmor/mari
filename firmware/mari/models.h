@@ -50,18 +50,13 @@ typedef enum {
     MARI_PACKET_DATA          = 16,
 } mr_packet_type_t;
 
-typedef struct __attribute__((packed)) {
-    int8_t rssi;
-} mr_packet_statistics_t;
-
 // general packet header
 typedef struct __attribute__((packed)) {
-    uint8_t                version;
-    mr_packet_type_t       type;
-    uint16_t               network_id;
-    uint64_t               dst;
-    uint64_t               src;
-    mr_packet_statistics_t stats;
+    uint8_t          version;
+    mr_packet_type_t type;
+    uint16_t         network_id;
+    uint64_t         dst;
+    uint64_t         src;
 } mr_packet_header_t;
 
 // beacon packet
