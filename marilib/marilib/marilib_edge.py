@@ -59,9 +59,7 @@ class MarilibEdge(MarilibBase):
     # NextProto values not in the table are still delivered to the generic
     # cb_application — registration is an "opt in to typed dispatch" hook,
     # not a wholesale replacement of the event callback.
-    _proto_handlers: dict[int, Callable[[Frame], None]] = field(
-        default_factory=dict, repr=False
-    )
+    _proto_handlers: dict[int, Callable[[Frame], None]] = field(default_factory=dict, repr=False)
 
     def __post_init__(self):
         self.setup_params = {
@@ -106,9 +104,7 @@ class MarilibEdge(MarilibBase):
         """
         assert self.serial_interface is not None
 
-        mari_frame = Frame(
-            Header(destination=dst, next_proto=next_proto), payload=payload
-        )
+        mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
 
         with self.lock:
             self.gateway.register_sent_frame(mari_frame)
@@ -290,9 +286,7 @@ class MarilibEdge(MarilibBase):
                         # A misbehaving handler must not break the rx loop —
                         # surface the error and fall through to the generic
                         # callback.
-                        print(
-                            f"[red]proto_handler({frame.header.next_proto}) raised: {exc}[/]"
-                        )
+                        print(f"[red]proto_handler({frame.header.next_proto}) raised: {exc}[/]")
 
                 return True, event_type, frame
             except (ValueError, ProtocolPayloadParserException):

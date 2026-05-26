@@ -34,13 +34,13 @@ class NextProto(IntEnum):
     always MARI_INTERNAL.
     """
 
-    RESERVED = 0           # catches uninitialized memory
-    MARI_INTERNAL = 1      # default; mari's own control + metrics
-    DOTBOT_APP = 2         # DotBot application protocol
-    SWARMIT_TESTBED = 3    # SwarmIT testbed protocol
-    IPV4 = 4               # IPv4 packet (RFC 791)
-    IPV6 = 5               # IPv6 packet (RFC 8200)
-    EXPERIMENTAL = 0xFE    # experimental / private use
+    RESERVED = 0  # catches uninitialized memory
+    MARI_INTERNAL = 1  # default; mari's own control + metrics
+    DOTBOT_APP = 2  # DotBot application protocol
+    SWARMIT_TESTBED = 3  # SwarmIT testbed protocol
+    IPV4 = 4  # IPv4 packet (RFC 791)
+    IPV6 = 5  # IPv6 packet (RFC 8200)
+    EXPERIMENTAL = 0xFE  # experimental / private use
 
 
 @dataclass

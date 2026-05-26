@@ -57,13 +57,13 @@ typedef enum {
 // MARI_NEXT_PROTO_MARI_INTERNAL — those frames are mari-managed by
 // definition.
 typedef enum {
-    MARI_NEXT_PROTO_RESERVED        = 0,    // catches uninitialized memory
-    MARI_NEXT_PROTO_MARI_INTERNAL   = 1,    // default; mari's own control + metrics
-    MARI_NEXT_PROTO_DOTBOT_APP      = 2,    // DotBot application protocol
-    MARI_NEXT_PROTO_SWARMIT_TESTBED = 3,    // SwarmIT testbed protocol
-    MARI_NEXT_PROTO_IPV4            = 4,    // IPv4 packet (RFC 791)
-    MARI_NEXT_PROTO_IPV6            = 5,    // IPv6 packet (RFC 8200)
-    MARI_NEXT_PROTO_EXPERIMENTAL    = 0xFE, // experimental / private use
+    MARI_NEXT_PROTO_RESERVED        = 0,     // catches uninitialized memory
+    MARI_NEXT_PROTO_MARI_INTERNAL   = 1,     // default; mari's own control + metrics
+    MARI_NEXT_PROTO_DOTBOT_APP      = 2,     // DotBot application protocol
+    MARI_NEXT_PROTO_SWARMIT_TESTBED = 3,     // SwarmIT testbed protocol
+    MARI_NEXT_PROTO_IPV4            = 4,     // IPv4 packet (RFC 791)
+    MARI_NEXT_PROTO_IPV6            = 5,     // IPv6 packet (RFC 8200)
+    MARI_NEXT_PROTO_EXPERIMENTAL    = 0xFE,  // experimental / private use
 } mr_next_proto_t;
 
 // general packet header
