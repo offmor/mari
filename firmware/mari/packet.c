@@ -71,12 +71,17 @@ size_t mr_build_uart_packet_gateway_info(uint8_t *buffer) {
 static size_t _set_header(uint8_t *buffer, uint64_t dst, mr_packet_type_t packet_type) {
     uint64_t src = mr_device_id();
 
+    // next_proto defaults to MARI_INTERNAL. Upper-layer senders (DotBot,
+    // SwarmIT, future IP stacks) will override via a typed send API once
+    // the protocol-repo work lands; for now every send is labeled as
+    // mari-managed, matching today's de-facto behavior.
     mr_packet_header_t header = {
         .version    = MARI_PROTOCOL_VERSION,
         .type       = packet_type,
         .network_id = mr_assoc_get_network_id(),
         .dst        = dst,
         .src        = src,
+        .next_proto = MARI_NEXT_PROTO_MARI_INTERNAL,
     };
     memcpy(buffer, &header, sizeof(mr_packet_header_t));
     return sizeof(mr_packet_header_t);

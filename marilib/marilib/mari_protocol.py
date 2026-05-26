@@ -26,6 +26,23 @@ class DefaultPayloadType(IntEnum):
         return bytes([self.value])
 
 
+class NextProto(IntEnum):
+    """Upper-layer protocol multiplex for the mari packet header.
+
+    Mirror of mr_next_proto_t in firmware/mari/models.h. Meaningful when
+    PacketType is DATA; for BEACON / JOIN_* / KEEPALIVE the field is
+    always MARI_INTERNAL.
+    """
+
+    RESERVED = 0           # catches uninitialized memory
+    MARI_INTERNAL = 1      # default; mari's own control + metrics
+    DOTBOT_APP = 2         # DotBot application protocol
+    SWARMIT_TESTBED = 3    # SwarmIT testbed protocol
+    IPV4 = 4               # IPv4 packet (RFC 791)
+    IPV6 = 5               # IPv6 packet (RFC 8200)
+    EXPERIMENTAL = 0xFE    # experimental / private use
+
+
 @dataclass
 class DefaultPayload(Packet):
     metadata: list[PacketFieldMetadata] = dataclasses.field(
@@ -265,6 +282,7 @@ class Header(Packet):
             PacketFieldMetadata(name="network_id", disp="net", length=2),
             PacketFieldMetadata(name="destination", disp="dst", length=8),
             PacketFieldMetadata(name="source", disp="src", length=8),
+            PacketFieldMetadata(name="next_proto", disp="proto", length=1),
         ]
     )
     version: int = MARI_PROTOCOL_VERSION
@@ -272,10 +290,20 @@ class Header(Packet):
     network_id: int = MARI_NET_ID_DEFAULT
     destination: int = MARI_BROADCAST_ADDRESS
     source: int = 0x0000000000000000
+    next_proto: int = NextProto.MARI_INTERNAL
 
     def __repr__(self):
         type_ = PacketType(self.type_).name
-        return f"Header(version={self.version}, type_={type_}, network_id=0x{self.network_id:04x}, destination=0x{self.destination:016x}, source=0x{self.source:016x})"
+        try:
+            next_proto_name = NextProto(self.next_proto).name
+        except ValueError:
+            next_proto_name = f"0x{self.next_proto:02x}"
+        return (
+            f"Header(version={self.version}, type_={type_}, "
+            f"network_id=0x{self.network_id:04x}, "
+            f"destination=0x{self.destination:016x}, "
+            f"source=0x{self.source:016x}, next_proto={next_proto_name})"
+        )
 
 
 @dataclass
@@ -286,9 +314,9 @@ class Frame:
     payload: bytes = b""
 
     def from_bytes(self, bytes_):
-        self.header = Header().from_bytes(bytes_[0:20])
-        if len(bytes_) > 20:
-            self.payload = bytes_[20:]
+        self.header = Header().from_bytes(bytes_[0:21])
+        if len(bytes_) > 21:
+            self.payload = bytes_[21:]
         return self
 
     def to_bytes(self, byteorder="little") -> bytes:

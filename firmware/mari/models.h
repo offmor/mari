@@ -50,6 +50,22 @@ typedef enum {
     MARI_PACKET_DATA          = 16,
 } mr_packet_type_t;
 
+// Upper-layer protocol multiplex (EtherType / PPP Protocol / IPv6 Next
+// Header analogue). Meaningful when type == MARI_PACKET_DATA; receivers
+// dispatch the payload to the owner of the indicated namespace. For
+// MARI_PACKET_{BEACON,JOIN_*,KEEPALIVE} the field is always
+// MARI_NEXT_PROTO_MARI_INTERNAL — those frames are mari-managed by
+// definition.
+typedef enum {
+    MARI_NEXT_PROTO_RESERVED        = 0,    // catches uninitialized memory
+    MARI_NEXT_PROTO_MARI_INTERNAL   = 1,    // default; mari's own control + metrics
+    MARI_NEXT_PROTO_DOTBOT_APP      = 2,    // DotBot application protocol
+    MARI_NEXT_PROTO_SWARMIT_TESTBED = 3,    // SwarmIT testbed protocol
+    MARI_NEXT_PROTO_IPV4            = 4,    // IPv4 packet (RFC 791)
+    MARI_NEXT_PROTO_IPV6            = 5,    // IPv6 packet (RFC 8200)
+    MARI_NEXT_PROTO_EXPERIMENTAL    = 0xFE, // experimental / private use
+} mr_next_proto_t;
+
 // general packet header
 typedef struct __attribute__((packed)) {
     uint8_t          version;
@@ -57,6 +73,7 @@ typedef struct __attribute__((packed)) {
     uint16_t         network_id;
     uint64_t         dst;
     uint64_t         src;
+    mr_next_proto_t  next_proto;
 } mr_packet_header_t;
 
 // beacon packet

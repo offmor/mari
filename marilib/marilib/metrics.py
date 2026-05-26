@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 #   [1 byte EdgeEvent prefix]   (prepended by send_probe;
 #                                EdgeEvent.NODE_DATA in EdgeEvent.to_bytes)
 #   [Header bytes]              (sum of Header().metadata field lengths,
-#                                today 20: version + type_ + network_id
-#                                + dst + src)
+#                                today 21: version + type_ + network_id
+#                                + dst + src + next_proto)
 #   [MetricsProbePayload bytes] (the fields preceding edge_tx_ts_us in
 #                                MetricsProbePayload().metadata: type,
 #                                cloud_tx_ts_us, cloud_rx_ts_us,
