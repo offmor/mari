@@ -233,11 +233,8 @@ class FrameStats:
         return min(r / s, 1.0)
 
     def received_rssi_dbm(self, window_secs: int = 0) -> float:
-        """Latest RSSI (dBm) measured at this node, sourced from the most
-        recent MetricsProbePayload. The `window_secs` parameter is kept
-        for API stability but ignored — historical per-frame RSSI is no
-        longer carried in the wire header (the byte was removed; RSSI
-        now travels only in periodic metrics probes)."""
+        """Latest RSSI (dBm) measured at this node, from the most recent
+        MetricsProbePayload. `window_secs` is accepted but unused."""
         del window_secs
         latest = self.received_rssi_dbm_probe_node()
         return float(latest) if latest is not None else 0.0

@@ -53,12 +53,9 @@ class MarilibEdge(MarilibBase):
     last_received_mqtt_data_ts: datetime = field(default_factory=datetime.now)
     main_file: str | None = None
 
-    # Per-NextProto callback table for received DATA frames. Populated via
-    # register_proto_handler(). Each handler is called with the full Frame
-    # so it can read frame.header.source / .destination as well as payload.
-    # NextProto values not in the table are still delivered to the generic
-    # cb_application — registration is an "opt in to typed dispatch" hook,
-    # not a wholesale replacement of the event callback.
+    # Per-NextProto receive handlers, populated by register_proto_handler.
+    # Frames with a matching next_proto are delivered here before the
+    # generic cb_application; unmatched frames go to cb_application only.
     _proto_handlers: dict[int, Callable[[Frame], None]] = field(default_factory=dict, repr=False)
 
     def __post_init__(self):
@@ -95,12 +92,10 @@ class MarilibEdge(MarilibBase):
             return self.gateway.remove_node(address)
 
     def send_frame(self, dst: int, payload: bytes, next_proto: int = NextProto.MARI_INTERNAL):
-        """Sends a frame to the gateway via serial.
+        """Send a frame to the gateway via serial.
 
         `next_proto` identifies which upper-layer namespace owns the
         payload bytes (DotBot app, SwarmIT testbed, IPv4, IPv6, …).
-        Defaults to MARI_INTERNAL so existing call sites that haven't
-        migrated keep their previous behavior.
         """
         assert self.serial_interface is not None
 
@@ -273,19 +268,11 @@ class MarilibEdge(MarilibBase):
                         if payload:
                             frame.payload = payload.to_bytes()
 
-                # Dispatch to a registered NextProto handler if one is
-                # installed for this frame's next_proto. Fires after the
-                # mari-internal preprocessing above so handlers see the
-                # final frame.payload; before the return, so the generic
-                # cb_application is still reached afterwards.
                 handler = self._proto_handlers.get(frame.header.next_proto)
                 if handler is not None:
                     try:
                         handler(frame)
                     except Exception as exc:  # pylint: disable=broad-except
-                        # A misbehaving handler must not break the rx loop —
-                        # surface the error and fall through to the generic
-                        # callback.
                         print(f"[red]proto_handler({frame.header.next_proto}) raised: {exc}[/]")
 
                 return True, event_type, frame
