@@ -94,9 +94,9 @@ size_t mari_gateway_count_nodes(void) {
 
 // -------- node ----------
 
-void mari_node_tx_payload(uint8_t *payload, uint8_t payload_len) {
+void mari_node_tx_payload(uint8_t *payload, uint8_t payload_len, mr_next_proto_t next_proto) {
     uint8_t packet[MARI_PACKET_MAX_SIZE] = { 0 };
-    uint8_t len                          = mr_build_packet_data(packet, mari_node_gateway_id(), payload, payload_len);
+    uint8_t len                          = mr_build_packet_data(packet, mari_node_gateway_id(), next_proto, payload, payload_len);
     mr_queue_add(packet, len);
 }
 

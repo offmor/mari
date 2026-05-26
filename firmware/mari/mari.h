@@ -32,7 +32,7 @@ void           mari_set_node_type(mr_node_type_t node_type);
 size_t mari_gateway_get_nodes(uint64_t *nodes);
 size_t mari_gateway_count_nodes(void);
 
-void     mari_node_tx_payload(uint8_t *payload, uint8_t payload_len);
+void     mari_node_tx_payload(uint8_t *payload, uint8_t payload_len, mr_next_proto_t next_proto);
 bool     mari_node_is_connected(void);
 uint64_t mari_node_gateway_id(void);
 
