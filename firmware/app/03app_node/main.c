@@ -164,7 +164,7 @@ int main(void) {
 
         if (node_vars.send_status_ready) {
             node_vars.send_status_ready = false;
-            mari_node_tx_payload((uint8_t *)status_packet_mock, sizeof(status_packet_mock));
+            mari_node_tx_payload((uint8_t *)status_packet_mock, sizeof(status_packet_mock), MARI_NEXT_PROTO_MARI_INTERNAL);
         }
 
         mari_event_loop();
