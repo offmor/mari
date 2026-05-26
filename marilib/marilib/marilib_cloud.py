@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Callable
 
 from marilib.metrics import MetricsTester
-from marilib.mari_protocol import Frame, Header
+from marilib.mari_protocol import Frame, Header, NextProto
 from marilib.model import (
     EdgeEvent,
     GatewayInfo,
@@ -39,6 +39,8 @@ class MarilibCloud(MarilibBase):
     started_ts: datetime = field(default_factory=datetime.now)
     last_received_mqtt_data_ts: datetime = field(default_factory=datetime.now)
     main_file: str | None = None
+
+    _proto_handlers: dict[int, Callable[[Frame], None]] = field(default_factory=dict, repr=False)
 
     def __post_init__(self):
         self.setup_params = {
@@ -91,16 +93,25 @@ class MarilibCloud(MarilibBase):
                 return node
         return None
 
-    def send_frame(self, dst: int, payload: bytes):
+    def send_frame(self, dst: int, payload: bytes, next_proto: int = NextProto.MARI_INTERNAL):
         """
         Sends a frame to a gateway via MQTT.
         Consists in publishing a message to the /mari/{network_id}/to_edge topic.
         """
-        mari_frame = Frame(Header(destination=dst), payload=payload)
+        mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
 
         self.mqtt_interface.send_data_to_edge(
             EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes()
         )
+
+    def register_proto_handler(self, proto: int, handler: Callable[[Frame], None]) -> None:
+        """Register a callback for incoming DATA frames carrying `proto`.
+
+        Symmetric with MarilibEdge.register_proto_handler. The handler is
+        invoked from the MQTT receive path before the generic cb_application.
+        Only one handler per NextProto value; subsequent calls overwrite.
+        """
+        self._proto_handlers[int(proto)] = handler
 
     def render_tui(self):
         if self.tui:
@@ -198,6 +209,13 @@ class MarilibCloud(MarilibBase):
                     payload = self.metrics_tester.handle_response_cloud(frame, gateway, node)
                     if payload:
                         frame.payload = payload.to_bytes()
+
+                handler = self._proto_handlers.get(frame.header.next_proto)
+                if handler is not None:
+                    try:
+                        handler(frame)
+                    except Exception as exc:  # pylint: disable=broad-except
+                        print(f"proto_handler({frame.header.next_proto}) raised: {exc}")
 
                 return True, EdgeEvent.NODE_DATA, frame
 
