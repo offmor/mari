@@ -232,13 +232,6 @@ class FrameStats:
         r = self.received_count(window_secs, include_test_packets=True)
         return min(r / s, 1.0)
 
-    def received_rssi_dbm(self, window_secs: int = 0) -> float:
-        """Latest RSSI (dBm) measured at this node, from the most recent
-        MetricsProbePayload. `window_secs` is accepted but unused."""
-        del window_secs
-        latest = self.received_rssi_dbm_probe_node()
-        return float(latest) if latest is not None else 0.0
-
 
 @dataclass
 class MariNode:
