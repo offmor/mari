@@ -21,14 +21,18 @@
 
 //=========================== defines ==========================================
 
-#define MARI_PROTOCOL_VERSION 2
+#define MARI_PROTOCOL_VERSION 3
 
 #define MARI_NET_ID_PATTERN_ANY 0
 #define MARI_NET_ID_DEFAULT     1
 
 //=========================== prototypes =======================================
 
-size_t mr_build_packet_data(uint8_t *buffer, uint64_t dst, uint8_t *data, size_t data_len);
+size_t mr_build_packet_data(uint8_t                *buffer,
+                            uint64_t                dst,
+                            uint8_t                *data,
+                            size_t                  data_len,
+                            const mari_tx_config_t *cfg);
 
 size_t mr_build_packet_join_request(uint8_t *buffer, uint64_t dst);
 

@@ -3,14 +3,14 @@ import time
 from typing import TYPE_CHECKING
 
 from rich import print
+
 from marilib.mari_protocol import (
     DefaultPayloadType,
     Frame,
     Header,
-    HeaderStats,
     MetricsProbePayload,
 )
-from marilib.model import MariGateway, MariNode, MARI_PROBE_STATS_MAX_LEN
+from marilib.model import MARI_PROBE_STATS_MAX_LEN, MariGateway, MariNode
 
 if TYPE_CHECKING:
     from marilib.marilib_edge import MarilibEdge
@@ -22,10 +22,8 @@ if TYPE_CHECKING:
 #   [1 byte EdgeEvent prefix]   (prepended by send_probe;
 #                                EdgeEvent.NODE_DATA in EdgeEvent.to_bytes)
 #   [Header bytes]              (sum of Header().metadata field lengths,
-#                                today 20: version + type_ + network_id
-#                                + dst + src)
-#   [HeaderStats bytes]         (sum of HeaderStats().metadata field
-#                                lengths, today 1: rssi)
+#                                today 21: version + type_ + network_id
+#                                + dst + src + next_proto)
 #   [MetricsProbePayload bytes] (the fields preceding edge_tx_ts_us in
 #                                MetricsProbePayload().metadata: type,
 #                                cloud_tx_ts_us, cloud_rx_ts_us,
@@ -39,7 +37,6 @@ if TYPE_CHECKING:
 EDGE_TX_TS_WIRE_OFFSET = (
     1
     + sum(f.length for f in Header().metadata)
-    + sum(f.length for f in HeaderStats().metadata)
     + sum(
         f.length
         for f in MetricsProbePayload().metadata

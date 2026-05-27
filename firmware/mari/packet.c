@@ -16,26 +16,33 @@
 
 //=========================== prototypes =======================================
 
-static size_t _set_header(uint8_t *buffer, uint64_t dst, mr_packet_type_t packet_type);
+static size_t _set_header(uint8_t                *buffer,
+                          uint64_t                dst,
+                          mr_packet_type_t        packet_type,
+                          const mari_tx_config_t *cfg);
 
 //=========================== public ===========================================
 
-size_t mr_build_packet_data(uint8_t *buffer, uint64_t dst, uint8_t *data, size_t data_len) {
-    size_t header_len = _set_header(buffer, dst, MARI_PACKET_DATA);
+size_t mr_build_packet_data(uint8_t                *buffer,
+                            uint64_t                dst,
+                            uint8_t                *data,
+                            size_t                  data_len,
+                            const mari_tx_config_t *cfg) {
+    size_t header_len = _set_header(buffer, dst, MARI_PACKET_DATA, cfg);
     memcpy(buffer + header_len, data, data_len);
     return header_len + data_len;
 }
 
 size_t mr_build_packet_keepalive(uint8_t *buffer, uint64_t dst) {
-    return _set_header(buffer, dst, MARI_PACKET_KEEPALIVE);
+    return _set_header(buffer, dst, MARI_PACKET_KEEPALIVE, &MARI_TX_INTERNAL);
 }
 
 size_t mr_build_packet_join_request(uint8_t *buffer, uint64_t dst) {
-    return _set_header(buffer, dst, MARI_PACKET_JOIN_REQUEST);
+    return _set_header(buffer, dst, MARI_PACKET_JOIN_REQUEST, &MARI_TX_INTERNAL);
 }
 
 size_t mr_build_packet_join_response(uint8_t *buffer, uint64_t dst) {
-    return _set_header(buffer, dst, MARI_PACKET_JOIN_RESPONSE);
+    return _set_header(buffer, dst, MARI_PACKET_JOIN_RESPONSE, &MARI_TX_INTERNAL);
 }
 
 size_t mr_build_packet_beacon(uint8_t *buffer, uint16_t net_id, uint64_t asn, uint8_t remaining_capacity, uint8_t active_schedule_id) {
@@ -68,15 +75,22 @@ size_t mr_build_uart_packet_gateway_info(uint8_t *buffer) {
 
 //=========================== private ==========================================
 
-static size_t _set_header(uint8_t *buffer, uint64_t dst, mr_packet_type_t packet_type) {
+static size_t _set_header(uint8_t                *buffer,
+                          uint64_t                dst,
+                          mr_packet_type_t        packet_type,
+                          const mari_tx_config_t *cfg) {
     uint64_t src = mr_device_id();
 
+    // Null cfg → MARI_NEXT_PROTO_RESERVED (0). Same outcome as cfg with
+    // next_proto explicitly 0. Senders that want their traffic labeled
+    // must pass a non-null cfg with next_proto set.
     mr_packet_header_t header = {
         .version    = MARI_PROTOCOL_VERSION,
         .type       = packet_type,
         .network_id = mr_assoc_get_network_id(),
         .dst        = dst,
         .src        = src,
+        .next_proto = cfg ? cfg->next_proto : MARI_NEXT_PROTO_RESERVED,
     };
     memcpy(buffer, &header, sizeof(mr_packet_header_t));
     return sizeof(mr_packet_header_t);

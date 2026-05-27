@@ -108,7 +108,7 @@ void tx_to_all_connected(void) {
     for (int i = 0; i < nodes_len; i++) {
         // printf("Enqueing TX to node %d: %016llX\n", i, nodes[i]);
         payload[0]         = i;
-        uint8_t packet_len = mr_build_packet_data(packet, nodes[i], payload, payload_len);
+        uint8_t packet_len = mr_build_packet_data(packet, nodes[i], payload, payload_len, &MARI_TX_INTERNAL);
         mari_tx(packet, packet_len);
         stats_register('D');
     }

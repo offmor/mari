@@ -2,27 +2,30 @@ import threading
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable
+
 from rich import print
 
-from marilib.metrics import EDGE_TX_TS_WIRE_OFFSET, MetricsTester
+from marilib.communication_adapter import MQTTAdapter, MQTTAdapterDummy, SerialAdapter
 from marilib.mari_protocol import (
     MARI_BROADCAST_ADDRESS,
-    Frame,
-    Header,
     DefaultPayload,
     DefaultPayloadType,
+    Frame,
+    Header,
+    MariTxConfig,
+    NextProto,
 )
+from marilib.marilib import MarilibBase
+from marilib.metrics import EDGE_TX_TS_WIRE_OFFSET, MetricsTester
 from marilib.model import (
+    SCHEDULES,
     EdgeEvent,
     GatewayInfo,
     MariGateway,
     MariNode,
     NodeInfoEdge,
-    SCHEDULES,
 )
 from marilib.protocol import ProtocolPayloadParserException
-from marilib.communication_adapter import MQTTAdapter, MQTTAdapterDummy, SerialAdapter
-from marilib.marilib import MarilibBase
 from marilib.tui_edge import MarilibTUIEdge
 
 
@@ -50,6 +53,11 @@ class MarilibEdge(MarilibBase):
     last_received_serial_data_ts: datetime = field(default_factory=datetime.now)
     last_received_mqtt_data_ts: datetime = field(default_factory=datetime.now)
     main_file: str | None = None
+
+    # Per-NextProto receive handlers, populated by register_proto_handler.
+    # Frames with a matching next_proto are delivered here before the
+    # generic cb_application; unmatched frames go to cb_application only.
+    _proto_handlers: dict[int, Callable[[Frame], None]] = field(default_factory=dict, repr=False)
 
     def __post_init__(self):
         self.setup_params = {
@@ -84,11 +92,18 @@ class MarilibEdge(MarilibBase):
         with self.lock:
             return self.gateway.remove_node(address)
 
-    def send_frame(self, dst: int, payload: bytes):
-        """Sends a frame to the gateway via serial."""
+    def send_frame(self, dst: int, payload: bytes, cfg: MariTxConfig | None = None):
+        """Send a frame to the gateway via serial.
+
+        `cfg` is a MariTxConfig carrying the upper-layer protocol label
+        (next_proto) and any future per-frame settings. If None, the
+        frame goes out as NextProto.RESERVED (0) — callers that want
+        their traffic labeled must pass an explicit cfg.
+        """
         assert self.serial_interface is not None
 
-        mari_frame = Frame(Header(destination=dst), payload=payload)
+        next_proto = cfg.next_proto if cfg else NextProto.RESERVED
+        mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
 
         with self.lock:
             self.gateway.register_sent_frame(mari_frame)
@@ -126,6 +141,22 @@ class MarilibEdge(MarilibBase):
             EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes(),
             late_stamp_offset=EDGE_TX_TS_WIRE_OFFSET,
         )
+
+    def register_proto_handler(self, proto: int, handler: Callable[[Frame], None]) -> None:
+        """Register a callback for incoming DATA frames carrying `proto`.
+
+        Only one handler per NextProto value; subsequent calls overwrite.
+        The handler is invoked synchronously from the serial RX path on
+        the same thread that drives handle_serial_data, BEFORE the frame
+        is delivered to the generic `cb_application` event callback —
+        so registered handlers can mutate frame state if needed and the
+        generic callback still sees the result.
+
+        Use NextProto.{MARI_INTERNAL, DOTBOT_APP, SWARMIT_TESTBED, IPV4,
+        IPV6, EXPERIMENTAL} for `proto`. Integers outside the enum are
+        accepted to leave room for private allocations.
+        """
+        self._proto_handlers[int(proto)] = handler
 
     def render_tui(self):
         if self.tui:
@@ -208,20 +239,19 @@ class MarilibEdge(MarilibBase):
             self.add_node(node_info.address)
             return True, event_type, node_info
 
-        elif event_type == EdgeEvent.NODE_LEFT:
+        if event_type == EdgeEvent.NODE_LEFT:
             node_info = NodeInfoEdge().from_bytes(data[1:])
             if self.remove_node(node_info.address):
                 return True, event_type, node_info
-            else:
-                return False, event_type, node_info
+            return False, event_type, node_info
 
-        elif event_type == EdgeEvent.NODE_KEEP_ALIVE:
+        if event_type == EdgeEvent.NODE_KEEP_ALIVE:
             node_info = NodeInfoEdge().from_bytes(data[1:])
             with self.lock:
                 self.gateway.update_node_liveness(node_info.address)
             return True, event_type, node_info
 
-        elif event_type == EdgeEvent.GATEWAY_INFO:
+        if event_type == EdgeEvent.GATEWAY_INFO:
             try:
                 with self.lock:
                     self.gateway.set_info(GatewayInfo().from_bytes(data[1:]))
@@ -241,6 +271,13 @@ class MarilibEdge(MarilibBase):
                         payload = self.metrics_tester.handle_response_edge(frame, rx_ts_us)
                         if payload:
                             frame.payload = payload.to_bytes()
+
+                handler = self._proto_handlers.get(frame.header.next_proto)
+                if handler is not None:
+                    try:
+                        handler(frame)
+                    except Exception as exc:  # pylint: disable=broad-except
+                        print(f"[red]proto_handler({frame.header.next_proto}) raised: {exc}[/]")
 
                 return True, event_type, frame
             except (ValueError, ProtocolPayloadParserException):

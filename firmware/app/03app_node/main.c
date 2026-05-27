@@ -93,7 +93,7 @@ static void handle_metrics_payload(mr_metrics_payload_t *metrics_payload) {
     metrics_payload->rssi_at_node         = mr_radio_rssi();
 
     // send metrics probe to gateway
-    mari_node_tx_payload((uint8_t *)metrics_payload, sizeof(mr_metrics_payload_t));
+    mari_node_tx_payload((uint8_t *)metrics_payload, sizeof(mr_metrics_payload_t), &MARI_TX_INTERNAL);
 }
 
 static void _send_status_packet_callback(void) {
@@ -164,7 +164,7 @@ int main(void) {
 
         if (node_vars.send_status_ready) {
             node_vars.send_status_ready = false;
-            mari_node_tx_payload((uint8_t *)status_packet_mock, sizeof(status_packet_mock));
+            mari_node_tx_payload((uint8_t *)status_packet_mock, sizeof(status_packet_mock), &MARI_TX_INTERNAL);
         }
 
         mari_event_loop();

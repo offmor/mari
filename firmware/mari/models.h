@@ -50,18 +50,55 @@ typedef enum {
     MARI_PACKET_DATA          = 16,
 } mr_packet_type_t;
 
-typedef struct __attribute__((packed)) {
-    int8_t rssi;
-} mr_packet_statistics_t;
+// Upper-layer protocol multiplex (EtherType / PPP Protocol / IPv6 Next
+// Header analogue). Meaningful when type == MARI_PACKET_DATA; receivers
+// dispatch the payload to the owner of the indicated namespace. For
+// MARI_PACKET_{BEACON,JOIN_*,KEEPALIVE} the field is always
+// MARI_NEXT_PROTO_MARI_INTERNAL — those frames are mari-managed by
+// definition.
+//
+typedef enum {
+    MARI_NEXT_PROTO_RESERVED = 0x00,  // null catcher / null cfg default
+
+    MARI_NEXT_PROTO_MARI_INTERNAL = 0x01,  // mari's own control + metrics
+    // 0x02..0x09 reserved for mari extensions
+
+    MARI_NEXT_PROTO_SWARMIT_TESTBED = 0x10,  // SwarmIT testbed protocol
+    MARI_NEXT_PROTO_DOTBOT_APP      = 0x11,  // DotBot application protocol
+    // 0x12..0x39 reserved for custom app protocols
+
+    MARI_NEXT_PROTO_IPV4 = 0xA0,  // IPv4 packet (RFC 791)
+    MARI_NEXT_PROTO_IPV6 = 0xA1,  // IPv6 packet (RFC 8200)
+    // 0xA2..0xFD reserved for standardized network protocols
+
+    MARI_NEXT_PROTO_EXPERIMENTAL = 0xFE,  // experimental / private use
+    // 0xFF reserved (high sentinel)
+} mr_next_proto_t;
+
+// Per-frame send configuration. Passed by pointer to the sender API so
+// new fields can be added without breaking call sites — pattern borrowed
+// from Linux sendmsg(2), Zephyr net_pkt, OpenThread otMessageSettings.
+// Future fields likely to land here: priority, retry policy, TTL in
+// slotframes, request for link-layer security, …
+typedef struct {
+    mr_next_proto_t next_proto;
+} mari_tx_config_t;
+
+// Default config for mari's own internal traffic (metrics, control). Other
+// consumers (DotBot apps, SwarmIT, IP stacks) define their own mari_tx_config_t
+// constants per the high-nibble category partition above.
+static const mari_tx_config_t MARI_TX_INTERNAL = {
+    .next_proto = MARI_NEXT_PROTO_MARI_INTERNAL,
+};
 
 // general packet header
 typedef struct __attribute__((packed)) {
-    uint8_t                version;
-    mr_packet_type_t       type;
-    uint16_t               network_id;
-    uint64_t               dst;
-    uint64_t               src;
-    mr_packet_statistics_t stats;
+    uint8_t          version;
+    mr_packet_type_t type;
+    uint16_t         network_id;
+    uint64_t         dst;
+    uint64_t         src;
+    mr_next_proto_t  next_proto;
 } mr_packet_header_t;
 
 // beacon packet

@@ -4,7 +4,7 @@ from enum import IntEnum
 
 from marilib.protocol import Packet, PacketFieldMetadata, PacketType
 
-MARI_PROTOCOL_VERSION = 2
+MARI_PROTOCOL_VERSION = 3
 MARI_BROADCAST_ADDRESS = 0xFFFFFFFFFFFFFFFF
 MARI_NET_ID_DEFAULT = 0x0001
 
@@ -24,6 +24,49 @@ class DefaultPayloadType(IntEnum):
 
     def as_bytes(self) -> bytes:
         return bytes([self.value])
+
+
+class NextProto(IntEnum):
+    """Upper-layer protocol multiplex for the mari packet header.
+
+    Mirror of mr_next_proto_t in firmware/mari/models.h. Meaningful when
+    PacketType is DATA; for BEACON / JOIN_* / KEEPALIVE the field is
+    always MARI_INTERNAL.
+
+    Numeric layout — ranges grouped by who owns the protocol::
+
+        0x00         RESERVED — null catcher; also default for null cfg
+        0x01..0x09   mari link-layer internal (metrics, control, ...)
+        0x0A..0x0F   unallocated (future mari)
+        0x10..0x39   swarm-application / custom protocols
+        0x3A..0x9F   unallocated (future categories)
+        0xA0..0xFD   standardized network protocols (IPv4, IPv6, ARP, ...)
+        0xFE         experimental / private use
+        0xFF         reserved (high sentinel)
+    """
+
+    RESERVED = 0x00  # null catcher / null cfg default
+    MARI_INTERNAL = 0x01  # mari's own control + metrics
+    SWARMIT_TESTBED = 0x10  # SwarmIT testbed protocol
+    DOTBOT_APP = 0x11  # DotBot application protocol
+    IPV4 = 0xA0  # IPv4 packet (RFC 791)
+    IPV6 = 0xA1  # IPv6 packet (RFC 8200)
+    EXPERIMENTAL = 0xFE  # experimental / private use
+
+
+@dataclass
+class MariTxConfig:
+    """Per-frame send configuration. Mirror of mari_tx_config_t in
+    firmware/mari/models.h. Future fields likely to land here: priority,
+    retry policy, TTL in slotframes, request for link-layer security."""
+
+    next_proto: int = NextProto.MARI_INTERNAL
+
+
+# Default config for mari's own internal traffic (metrics, control). Other
+# consumers (DotBot apps, SwarmIT, IP stacks) define their own MariTxConfig
+# constants — pattern documented in NextProto's enum body.
+MARI_TX_INTERNAL = MariTxConfig(next_proto=NextProto.MARI_INTERNAL)
 
 
 @dataclass
@@ -190,26 +233,24 @@ class MetricsProbePayload(Packet):
         if probe_stats_start_epoch is None:
             # if no epoch is provided, just wait a bit
             return -1
-        else:
-            # if epoch is provided, subtract the epoch values from the current values
-            if probe_stats_start_epoch.asn == 0:
-                return 0
-            # if a packet was received at the gatweway, it should also be received at the edge (otherwise, it's a loss)
-            gw_rx_count = self.gw_rx_count - probe_stats_start_epoch.gw_rx_count
-            edge_rx_count = self.edge_rx_count - probe_stats_start_epoch.edge_rx_count
+        # if epoch is provided, subtract the epoch values from the current values
+        if probe_stats_start_epoch.asn == 0:
+            return 0
+        # if a packet was received at the gatweway, it should also be received at the edge (otherwise, it's a loss)
+        gw_rx_count = self.gw_rx_count - probe_stats_start_epoch.gw_rx_count
+        edge_rx_count = self.edge_rx_count - probe_stats_start_epoch.edge_rx_count
         return self.pdr_saturated(edge_rx_count, gw_rx_count)
 
     def pdr_downlink_uart(self, probe_stats_start_epoch=None) -> float:
         if probe_stats_start_epoch is None:
             # if no epoch is provided, just wait a bit
             return -1
-        else:
-            # if epoch is provided, subtract the epoch values from the current values
-            if probe_stats_start_epoch.asn == 0:
-                return 0
-            # if a packet was sent at the edge, it should also be sent at the gateway (otherwise, it's a loss)
-            gw_tx_count = self.gw_tx_count - probe_stats_start_epoch.gw_tx_count
-            edge_tx_count = self.edge_tx_count - probe_stats_start_epoch.edge_tx_count
+        # if epoch is provided, subtract the epoch values from the current values
+        if probe_stats_start_epoch.asn == 0:
+            return 0
+        # if a packet was sent at the edge, it should also be sent at the gateway (otherwise, it's a loss)
+        gw_tx_count = self.gw_tx_count - probe_stats_start_epoch.gw_tx_count
+        edge_tx_count = self.edge_tx_count - probe_stats_start_epoch.edge_tx_count
         return self.pdr_saturated(gw_tx_count, edge_tx_count)
 
     def rssi_at_node_dbm(self) -> int:
@@ -257,24 +298,6 @@ class MetricsResponsePayload(Packet):
 
 
 @dataclass
-class HeaderStats(Packet):
-    """Dataclass that holds MAC header stats."""
-
-    metadata: list[PacketFieldMetadata] = dataclasses.field(
-        default_factory=lambda: [
-            PacketFieldMetadata(name="rssi", disp="rssi", length=1),
-        ]
-    )
-    rssi: int = 0
-
-    @property
-    def rssi_dbm(self) -> int:
-        if self.rssi > 127:
-            return self.rssi - 255
-        return self.rssi
-
-
-@dataclass
 class Header(Packet):
     """Dataclass that holds MAC header fields."""
 
@@ -285,6 +308,7 @@ class Header(Packet):
             PacketFieldMetadata(name="network_id", disp="net", length=2),
             PacketFieldMetadata(name="destination", disp="dst", length=8),
             PacketFieldMetadata(name="source", disp="src", length=8),
+            PacketFieldMetadata(name="next_proto", disp="proto", length=1),
         ]
     )
     version: int = MARI_PROTOCOL_VERSION
@@ -292,10 +316,20 @@ class Header(Packet):
     network_id: int = MARI_NET_ID_DEFAULT
     destination: int = MARI_BROADCAST_ADDRESS
     source: int = 0x0000000000000000
+    next_proto: int = NextProto.MARI_INTERNAL
 
     def __repr__(self):
         type_ = PacketType(self.type_).name
-        return f"Header(version={self.version}, type_={type_}, network_id=0x{self.network_id:04x}, destination=0x{self.destination:016x}, source=0x{self.source:016x})"
+        try:
+            next_proto_name = NextProto(self.next_proto).name
+        except ValueError:
+            next_proto_name = f"0x{self.next_proto:02x}"
+        return (
+            f"Header(version={self.version}, type_={type_}, "
+            f"network_id=0x{self.network_id:04x}, "
+            f"destination=0x{self.destination:016x}, "
+            f"source=0x{self.source:016x}, next_proto={next_proto_name})"
+        )
 
 
 @dataclass
@@ -303,21 +337,16 @@ class Frame:
     """Data class that holds a payload packet."""
 
     header: Header = None
-    stats: HeaderStats = dataclasses.field(default_factory=HeaderStats)
     payload: bytes = b""
 
     def from_bytes(self, bytes_):
-        self.header = Header().from_bytes(bytes_[0:20])
-        if len(bytes_) > 20:
-            self.stats = HeaderStats().from_bytes(bytes_[20:21])
-            if len(bytes_) > 21:
-                self.payload = bytes_[21:]
+        self.header = Header().from_bytes(bytes_[0:21])
+        if len(bytes_) > 21:
+            self.payload = bytes_[21:]
         return self
 
     def to_bytes(self, byteorder="little") -> bytes:
-        header_bytes = self.header.to_bytes(byteorder)
-        stats_bytes = self.stats.to_bytes(byteorder)
-        return header_bytes + stats_bytes + self.payload
+        return self.header.to_bytes(byteorder) + self.payload
 
     @property
     def is_test_packet(self) -> bool:

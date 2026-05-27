@@ -600,13 +600,12 @@ static void activity_ri4(uint32_t ts) {
         fix_drift(mac_vars.received_packet.start_ts);
     }
 
-    // now that we know it's a mari packet, store some info about it
+    // store info about the received packet; rssi is used by the handover
+    // hysteresis check below
     mac_vars.received_packet.channel = mac_vars.current_slot_info.channel;
     mac_vars.received_packet.rssi    = mr_radio_rssi();
     mac_vars.received_packet.end_ts  = ts;
     mac_vars.received_packet.asn     = mac_vars.asn;
-
-    header->stats.rssi = mr_radio_rssi();
 
     mr_handle_packet(mac_vars.received_packet.packet, mac_vars.received_packet.packet_len);
 
