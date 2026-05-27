@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import Any, Callable
 
 from marilib.communication_adapter import MQTTAdapter
-from marilib.mari_protocol import MARI_TX_INTERNAL, Frame, Header, MariTxConfig
+from marilib.mari_protocol import Frame, Header, MariTxConfig, NextProto
 from marilib.marilib import MarilibBase
 from marilib.metrics import MetricsTester
 from marilib.model import (
@@ -93,15 +93,17 @@ class MarilibCloud(MarilibBase):
                 return node
         return None
 
-    def send_frame(self, dst: int, payload: bytes, cfg: MariTxConfig = MARI_TX_INTERNAL):
+    def send_frame(self, dst: int, payload: bytes, cfg: MariTxConfig | None = None):
         """
         Sends a frame to a gateway via MQTT.
         Consists in publishing a message to the /mari/{network_id}/to_edge topic.
 
-        `cfg` is a MariTxConfig (defaults to mari-internal); use a
-        namespace-specific constant for app traffic.
+        `cfg` is a MariTxConfig; if None, the frame is labeled
+        NextProto.UNKNOWN. Callers that want their traffic labeled
+        should pass an explicit cfg.
         """
-        mari_frame = Frame(Header(destination=dst, next_proto=cfg.next_proto), payload=payload)
+        next_proto = cfg.next_proto if cfg else NextProto.UNKNOWN
+        mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
 
         self.mqtt_interface.send_data_to_edge(
             EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes()

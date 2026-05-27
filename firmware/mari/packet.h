@@ -30,9 +30,9 @@
 
 size_t mr_build_packet_data(uint8_t                *buffer,
                             uint64_t                dst,
-                            const mari_tx_config_t *cfg,
                             uint8_t                *data,
-                            size_t                  data_len);
+                            size_t                  data_len,
+                            const mari_tx_config_t *cfg);
 
 size_t mr_build_packet_join_request(uint8_t *buffer, uint64_t dst);
 

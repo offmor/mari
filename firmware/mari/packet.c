@@ -25,9 +25,9 @@ static size_t _set_header(uint8_t                *buffer,
 
 size_t mr_build_packet_data(uint8_t                *buffer,
                             uint64_t                dst,
-                            const mari_tx_config_t *cfg,
                             uint8_t                *data,
-                            size_t                  data_len) {
+                            size_t                  data_len,
+                            const mari_tx_config_t *cfg) {
     size_t header_len = _set_header(buffer, dst, MARI_PACKET_DATA, cfg);
     memcpy(buffer + header_len, data, data_len);
     return header_len + data_len;
@@ -81,13 +81,17 @@ static size_t _set_header(uint8_t                *buffer,
                           const mari_tx_config_t *cfg) {
     uint64_t src = mr_device_id();
 
+    // Null cfg → MARI_NEXT_PROTO_UNKNOWN (0). Same outcome as cfg with
+    // next_proto explicitly 0 — receivers can't tell the cases apart,
+    // and neither can the wire. Senders that want their traffic
+    // identified must pass a non-null cfg with next_proto set.
     mr_packet_header_t header = {
         .version    = MARI_PROTOCOL_VERSION,
         .type       = packet_type,
         .network_id = mr_assoc_get_network_id(),
         .dst        = dst,
         .src        = src,
-        .next_proto = cfg->next_proto,
+        .next_proto = cfg ? cfg->next_proto : MARI_NEXT_PROTO_UNKNOWN,
     };
     memcpy(buffer, &header, sizeof(mr_packet_header_t));
     return sizeof(mr_packet_header_t);

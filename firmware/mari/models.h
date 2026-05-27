@@ -59,7 +59,7 @@ typedef enum {
 //
 // Numeric layout — high nibble names a category, low nibble names an
 // item within that category. 16 × 16 = 256 slots total.
-//   0x00         reserved (null catcher)
+//   0x00         unknown / unspecified (null catcher, also default for null cfg)
 //   0x01..0x0F   mari link-layer internal (metrics, control, …)
 //   0x10..0x1F   swarm-application protocols (DotBot, SwarmIT, …)
 //   0x20..0x2F   standardized network protocols (IPv4, IPv6, ARP, …)
@@ -67,8 +67,8 @@ typedef enum {
 //   0xF0..0xFE   experimental / private use
 //   0xFF         reserved
 typedef enum {
-    MARI_NEXT_PROTO_RESERVED        = 0x00,  // catches uninitialized memory
-    MARI_NEXT_PROTO_MARI_INTERNAL   = 0x01,  // default; mari's own control + metrics
+    MARI_NEXT_PROTO_UNKNOWN         = 0x00,  // null cfg / uninitialized / sender didn't say
+    MARI_NEXT_PROTO_MARI_INTERNAL   = 0x01,  // mari's own control + metrics
     MARI_NEXT_PROTO_DOTBOT_APP      = 0x10,  // DotBot application protocol
     MARI_NEXT_PROTO_SWARMIT_TESTBED = 0x11,  // SwarmIT testbed protocol
     MARI_NEXT_PROTO_IPV4            = 0x21,  // IPv4 packet (RFC 791)

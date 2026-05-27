@@ -8,12 +8,12 @@ from rich import print
 from marilib.communication_adapter import MQTTAdapter, MQTTAdapterDummy, SerialAdapter
 from marilib.mari_protocol import (
     MARI_BROADCAST_ADDRESS,
-    MARI_TX_INTERNAL,
     DefaultPayload,
     DefaultPayloadType,
     Frame,
     Header,
     MariTxConfig,
+    NextProto,
 )
 from marilib.marilib import MarilibBase
 from marilib.metrics import EDGE_TX_TS_WIRE_OFFSET, MetricsTester
@@ -92,17 +92,19 @@ class MarilibEdge(MarilibBase):
         with self.lock:
             return self.gateway.remove_node(address)
 
-    def send_frame(self, dst: int, payload: bytes, cfg: MariTxConfig = MARI_TX_INTERNAL):
+    def send_frame(self, dst: int, payload: bytes, cfg: MariTxConfig | None = None):
         """Send a frame to the gateway via serial.
 
         `cfg` is a MariTxConfig carrying the upper-layer protocol label
-        (next_proto) and any future per-frame settings. Defaults to
-        mari-internal — callers sending app traffic should pass their
-        namespace's own MariTxConfig constant.
+        (next_proto) and any future per-frame settings. If None (or if
+        the cfg's next_proto is 0), the frame goes out as
+        NextProto.UNKNOWN — callers that want their traffic labeled must
+        pass an explicit cfg with next_proto set.
         """
         assert self.serial_interface is not None
 
-        mari_frame = Frame(Header(destination=dst, next_proto=cfg.next_proto), payload=payload)
+        next_proto = cfg.next_proto if cfg else NextProto.UNKNOWN
+        mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
 
         with self.lock:
             self.gateway.register_sent_frame(mari_frame)
