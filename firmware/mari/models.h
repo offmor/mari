@@ -85,6 +85,13 @@ typedef struct {
     mr_next_proto_t next_proto;
 } mari_tx_config_t;
 
+// Default config for mari's own internal traffic (metrics, control). Other
+// consumers (DotBot apps, SwarmIT, IP stacks) define their own mari_tx_config_t
+// constants per the high-nibble category partition above.
+static const mari_tx_config_t MARI_TX_INTERNAL = {
+    .next_proto = MARI_NEXT_PROTO_MARI_INTERNAL,
+};
+
 // general packet header
 typedef struct __attribute__((packed)) {
     uint8_t          version;
