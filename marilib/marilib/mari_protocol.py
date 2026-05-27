@@ -35,38 +35,24 @@ class NextProto(IntEnum):
 
     Numeric layout — ranges grouped by who owns the protocol::
 
-        0x00         RESERVED — null catcher; also default for null cfg
+        0x00         RESERVED — null catcher (zeroed / uninitialized memory)
         0x01..0x09   mari link-layer internal (metrics, control, ...)
         0x0A..0x0F   unallocated (future mari)
         0x10..0x39   swarm-application / custom protocols
         0x3A..0x9F   unallocated (future categories)
         0xA0..0xFD   standardized network protocols (IPv4, IPv6, ARP, ...)
         0xFE         experimental / private use
-        0xFF         reserved (high sentinel)
+        0xFF         UNKNOWN — unclassified; default when next_proto unset
     """
 
-    RESERVED = 0x00  # null catcher / null cfg default
+    RESERVED = 0x00  # null catcher (zeroed / uninitialized memory)
     MARI_INTERNAL = 0x01  # mari's own control + metrics
     SWARMIT_TESTBED = 0x10  # SwarmIT testbed protocol
     DOTBOT_APP = 0x11  # DotBot application protocol
     IPV4 = 0xA0  # IPv4 packet (RFC 791)
     IPV6 = 0xA1  # IPv6 packet (RFC 8200)
     EXPERIMENTAL = 0xFE  # experimental / private use
-
-
-@dataclass
-class MariTxConfig:
-    """Per-frame send configuration. Mirror of mari_tx_config_t in
-    firmware/mari/models.h. Future fields likely to land here: priority,
-    retry policy, TTL in slotframes, request for link-layer security."""
-
-    next_proto: int = NextProto.MARI_INTERNAL
-
-
-# Default config for mari's own internal traffic (metrics, control). Other
-# consumers (DotBot apps, SwarmIT, IP stacks) define their own MariTxConfig
-# constants — pattern documented in NextProto's enum body.
-MARI_TX_INTERNAL = MariTxConfig(next_proto=NextProto.MARI_INTERNAL)
+    UNKNOWN = 0xFF  # unclassified; default when next_proto unset
 
 
 @dataclass

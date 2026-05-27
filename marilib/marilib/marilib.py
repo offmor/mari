@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+from marilib.mari_protocol import NextProto
 from marilib.model import MariNode
 
 
@@ -23,7 +24,7 @@ class MarilibBase(ABC):
         """Removes a node from the network."""
 
     @abstractmethod
-    def send_frame(self, dst: int, payload: bytes):
+    def send_frame(self, dst: int, payload: bytes, *, next_proto: int = NextProto.UNKNOWN):
         """Sends a frame to the network."""
 
     @abstractmethod

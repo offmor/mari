@@ -12,7 +12,6 @@ from marilib.mari_protocol import (
     DefaultPayloadType,
     Frame,
     Header,
-    MariTxConfig,
     NextProto,
 )
 from marilib.marilib import MarilibBase
@@ -92,17 +91,15 @@ class MarilibEdge(MarilibBase):
         with self.lock:
             return self.gateway.remove_node(address)
 
-    def send_frame(self, dst: int, payload: bytes, cfg: MariTxConfig | None = None):
+    def send_frame(self, dst: int, payload: bytes, *, next_proto: int = NextProto.UNKNOWN):
         """Send a frame to the gateway via serial.
 
-        `cfg` is a MariTxConfig carrying the upper-layer protocol label
-        (next_proto) and any future per-frame settings. If None, the
-        frame goes out as NextProto.RESERVED (0) — callers that want
-        their traffic labeled must pass an explicit cfg.
+        `next_proto` labels the upper-layer protocol that owns the payload
+        (mr_next_proto_t). Defaults to UNKNOWN (0xFF) so unlabeled traffic
+        stays detectable; namespace owners pass their own value.
         """
         assert self.serial_interface is not None
 
-        next_proto = cfg.next_proto if cfg else NextProto.RESERVED
         mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
 
         with self.lock:

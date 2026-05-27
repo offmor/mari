@@ -58,7 +58,7 @@ typedef enum {
 // definition.
 //
 typedef enum {
-    MARI_NEXT_PROTO_RESERVED = 0x00,  // null catcher / null cfg default
+    MARI_NEXT_PROTO_RESERVED = 0x00,  // null catcher (zeroed / uninitialized memory)
 
     MARI_NEXT_PROTO_MARI_INTERNAL = 0x01,  // mari's own control + metrics
     // 0x02..0x09 reserved for mari extensions
@@ -72,7 +72,7 @@ typedef enum {
     // 0xA2..0xFD reserved for standardized network protocols
 
     MARI_NEXT_PROTO_EXPERIMENTAL = 0xFE,  // experimental / private use
-    // 0xFF reserved (high sentinel)
+    MARI_NEXT_PROTO_UNKNOWN      = 0xFF,  // unclassified upper-layer protocol; default when next_proto unset
 } mr_next_proto_t;
 
 // Per-frame send configuration. Passed by pointer to the sender API so
