@@ -1,4 +1,4 @@
-__version__ = "0.8.1"
+__version__ = "0.9.0rc1"
 
 
 # declare these just to avoid circular imports
