@@ -8,11 +8,12 @@ from rich import print
 from marilib.communication_adapter import MQTTAdapter, MQTTAdapterDummy, SerialAdapter
 from marilib.mari_protocol import (
     MARI_BROADCAST_ADDRESS,
+    MARI_TX_INTERNAL,
     DefaultPayload,
     DefaultPayloadType,
     Frame,
     Header,
-    NextProto,
+    MariTxConfig,
 )
 from marilib.marilib import MarilibBase
 from marilib.metrics import EDGE_TX_TS_WIRE_OFFSET, MetricsTester
@@ -91,15 +92,17 @@ class MarilibEdge(MarilibBase):
         with self.lock:
             return self.gateway.remove_node(address)
 
-    def send_frame(self, dst: int, payload: bytes, next_proto: int = NextProto.MARI_INTERNAL):
+    def send_frame(self, dst: int, payload: bytes, cfg: MariTxConfig = MARI_TX_INTERNAL):
         """Send a frame to the gateway via serial.
 
-        `next_proto` identifies which upper-layer namespace owns the
-        payload bytes (DotBot app, SwarmIT testbed, IPv4, IPv6, …).
+        `cfg` is a MariTxConfig carrying the upper-layer protocol label
+        (next_proto) and any future per-frame settings. Defaults to
+        mari-internal — callers sending app traffic should pass their
+        namespace's own MariTxConfig constant.
         """
         assert self.serial_interface is not None
 
-        mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
+        mari_frame = Frame(Header(destination=dst, next_proto=cfg.next_proto), payload=payload)
 
         with self.lock:
             self.gateway.register_sent_frame(mari_frame)

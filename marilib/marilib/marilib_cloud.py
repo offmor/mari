@@ -3,8 +3,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable
 
+from marilib.communication_adapter import MQTTAdapter
+from marilib.mari_protocol import MARI_TX_INTERNAL, Frame, Header, MariTxConfig
+from marilib.marilib import MarilibBase
 from marilib.metrics import MetricsTester
-from marilib.mari_protocol import Frame, Header, NextProto
 from marilib.model import (
     EdgeEvent,
     GatewayInfo,
@@ -12,8 +14,6 @@ from marilib.model import (
     MariNode,
     NodeInfoCloud,
 )
-from marilib.communication_adapter import MQTTAdapter
-from marilib.marilib import MarilibBase
 from marilib.tui_cloud import MarilibTUICloud
 
 LOAD_PACKET_PAYLOAD = b"L"
@@ -93,12 +93,15 @@ class MarilibCloud(MarilibBase):
                 return node
         return None
 
-    def send_frame(self, dst: int, payload: bytes, next_proto: int = NextProto.MARI_INTERNAL):
+    def send_frame(self, dst: int, payload: bytes, cfg: MariTxConfig = MARI_TX_INTERNAL):
         """
         Sends a frame to a gateway via MQTT.
         Consists in publishing a message to the /mari/{network_id}/to_edge topic.
+
+        `cfg` is a MariTxConfig (defaults to mari-internal); use a
+        namespace-specific constant for app traffic.
         """
-        mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
+        mari_frame = Frame(Header(destination=dst, next_proto=cfg.next_proto), payload=payload)
 
         self.mqtt_interface.send_data_to_edge(
             EdgeEvent.to_bytes(EdgeEvent.NODE_DATA) + mari_frame.to_bytes()

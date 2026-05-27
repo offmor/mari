@@ -102,7 +102,7 @@ void mari_event_callback(mr_event_t event, mr_event_data_t event_data) {
             uint8_t packet[MARI_PACKET_MAX_SIZE] = { 0 };
             uint8_t data[]                       = { 0x48, 0x65, 0x6C, 0x6C, 0x6F };  // "Hello"
 
-            uint8_t packet_len = mr_build_packet_data(packet, event_data.data.gateway_info.gateway_id, MARI_NEXT_PROTO_MARI_INTERNAL, data, 5);
+            uint8_t packet_len = mr_build_packet_data(packet, event_data.data.gateway_info.gateway_id, &MARI_TX_INTERNAL, data, 5);
 
             mr_queue_add(packet, packet_len);
             mr_queue_add(packet, packet_len);

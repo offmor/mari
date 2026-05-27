@@ -28,11 +28,11 @@
 
 //=========================== prototypes =======================================
 
-size_t mr_build_packet_data(uint8_t        *buffer,
-                            uint64_t        dst,
-                            mr_next_proto_t next_proto,
-                            uint8_t        *data,
-                            size_t          data_len);
+size_t mr_build_packet_data(uint8_t                *buffer,
+                            uint64_t                dst,
+                            const mari_tx_config_t *cfg,
+                            uint8_t                *data,
+                            size_t                  data_len);
 
 size_t mr_build_packet_join_request(uint8_t *buffer, uint64_t dst);
 

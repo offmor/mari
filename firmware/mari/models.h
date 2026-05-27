@@ -56,15 +56,34 @@ typedef enum {
 // MARI_PACKET_{BEACON,JOIN_*,KEEPALIVE} the field is always
 // MARI_NEXT_PROTO_MARI_INTERNAL — those frames are mari-managed by
 // definition.
+//
+// Numeric layout — high nibble names a category, low nibble names an
+// item within that category. 16 × 16 = 256 slots total.
+//   0x00         reserved (null catcher)
+//   0x01..0x0F   mari link-layer internal (metrics, control, …)
+//   0x10..0x1F   swarm-application protocols (DotBot, SwarmIT, …)
+//   0x20..0x2F   standardized network protocols (IPv4, IPv6, ARP, …)
+//   0x30..0xEF   reserved for future categories
+//   0xF0..0xFE   experimental / private use
+//   0xFF         reserved
 typedef enum {
-    MARI_NEXT_PROTO_RESERVED        = 0,     // catches uninitialized memory
-    MARI_NEXT_PROTO_MARI_INTERNAL   = 1,     // default; mari's own control + metrics
-    MARI_NEXT_PROTO_DOTBOT_APP      = 2,     // DotBot application protocol
-    MARI_NEXT_PROTO_SWARMIT_TESTBED = 3,     // SwarmIT testbed protocol
-    MARI_NEXT_PROTO_IPV4            = 4,     // IPv4 packet (RFC 791)
-    MARI_NEXT_PROTO_IPV6            = 5,     // IPv6 packet (RFC 8200)
+    MARI_NEXT_PROTO_RESERVED        = 0x00,  // catches uninitialized memory
+    MARI_NEXT_PROTO_MARI_INTERNAL   = 0x01,  // default; mari's own control + metrics
+    MARI_NEXT_PROTO_DOTBOT_APP      = 0x10,  // DotBot application protocol
+    MARI_NEXT_PROTO_SWARMIT_TESTBED = 0x11,  // SwarmIT testbed protocol
+    MARI_NEXT_PROTO_IPV4            = 0x21,  // IPv4 packet (RFC 791)
+    MARI_NEXT_PROTO_IPV6            = 0x22,  // IPv6 packet (RFC 8200)
     MARI_NEXT_PROTO_EXPERIMENTAL    = 0xFE,  // experimental / private use
 } mr_next_proto_t;
+
+// Per-frame send configuration. Passed by pointer to the sender API so
+// new fields can be added without breaking call sites — pattern borrowed
+// from Linux sendmsg(2), Zephyr net_pkt, OpenThread otMessageSettings.
+// Future fields likely to land here: priority, retry policy, TTL in
+// slotframes, request for link-layer security, …
+typedef struct {
+    mr_next_proto_t next_proto;
+} mari_tx_config_t;
 
 // general packet header
 typedef struct __attribute__((packed)) {
