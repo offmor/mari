@@ -96,14 +96,13 @@ class MarilibEdge(MarilibBase):
         """Send a frame to the gateway via serial.
 
         `cfg` is a MariTxConfig carrying the upper-layer protocol label
-        (next_proto) and any future per-frame settings. If None (or if
-        the cfg's next_proto is 0), the frame goes out as
-        NextProto.UNKNOWN — callers that want their traffic labeled must
-        pass an explicit cfg with next_proto set.
+        (next_proto) and any future per-frame settings. If None, the
+        frame goes out as NextProto.RESERVED (0) — callers that want
+        their traffic labeled must pass an explicit cfg.
         """
         assert self.serial_interface is not None
 
-        next_proto = cfg.next_proto if cfg else NextProto.UNKNOWN
+        next_proto = cfg.next_proto if cfg else NextProto.RESERVED
         mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
 
         with self.lock:

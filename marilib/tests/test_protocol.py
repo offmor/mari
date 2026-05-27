@@ -29,9 +29,9 @@ def test_header_repr_handles_unknown_next_proto():
 
 def test_header_from_bytes():
     header = Header().from_bytes(
-        bytes.fromhex("0210170059291ba8fdcecef531eb7f2526ef039901f0f0f0f0f0")[0:21]
+        bytes.fromhex("0310170059291ba8fdcecef531eb7f2526ef039901f0f0f0f0f0")[0:21]
     )
-    assert header.version == 2
+    assert header.version == 3
     assert header.type_ == 16
     assert header.network_id == 23
     assert header.destination == int.from_bytes(
@@ -43,9 +43,9 @@ def test_header_from_bytes():
 
 def test_frame_from_bytes():
     frame = Frame().from_bytes(
-        bytes.fromhex("0210170059291ba8fdcecef531eb7f2526ef039901f0f0f0f0f0")
+        bytes.fromhex("0310170059291ba8fdcecef531eb7f2526ef039901f0f0f0f0f0")
     )
-    assert frame.header.version == 2
+    assert frame.header.version == 3
     assert frame.header.type_ == 16
     assert frame.header.network_id == 23
     assert frame.header.destination == int.from_bytes(

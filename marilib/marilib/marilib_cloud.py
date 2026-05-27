@@ -99,10 +99,10 @@ class MarilibCloud(MarilibBase):
         Consists in publishing a message to the /mari/{network_id}/to_edge topic.
 
         `cfg` is a MariTxConfig; if None, the frame is labeled
-        NextProto.UNKNOWN. Callers that want their traffic labeled
+        NextProto.RESERVED (0). Callers that want their traffic labeled
         should pass an explicit cfg.
         """
-        next_proto = cfg.next_proto if cfg else NextProto.UNKNOWN
+        next_proto = cfg.next_proto if cfg else NextProto.RESERVED
         mari_frame = Frame(Header(destination=dst, next_proto=next_proto), payload=payload)
 
         self.mqtt_interface.send_data_to_edge(
