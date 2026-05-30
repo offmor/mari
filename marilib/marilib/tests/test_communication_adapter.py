@@ -19,6 +19,12 @@ def test_from_url_tls():
     assert a.use_tls is True
 
 
+def test_from_url_defaults_port_when_missing():
+    # No explicit port → 8883 for TLS, 1883 for plain.
+    assert MQTTAdapter.from_url("mqtts://argus", is_edge=False).port == 8883
+    assert MQTTAdapter.from_url("mqtt://argus", is_edge=True).port == 1883
+
+
 def test_from_url_with_embedded_credentials():
     # A userinfo prefix must not break the host:port split.
     a = MQTTAdapter.from_url("mqtts://alice:s3cret@argus:8883", is_edge=False)

@@ -86,8 +86,8 @@ class MQTTAdapter(CommunicationAdapterBase):
         port,
         is_edge: bool,
         use_tls: bool = False,
-        username: str = None,
-        password: str = None,
+        username: str | None = None,
+        password: str | None = None,
     ):
         self.host = host
         self.port = port
@@ -103,23 +103,30 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.qos = 0
 
     @classmethod
-    def from_url(cls, url: str, is_edge: bool, username: str = None, password: str = None):
-        """Build an MQTTAdapter from a `mqtt(s)://[user:pass@]host:port` URL.
+    def from_url(
+        cls,
+        url: str,
+        is_edge: bool,
+        username: str | None = None,
+        password: str | None = None,
+    ):
+        """Build an MQTTAdapter from a `mqtt(s)://[user:pass@]host[:port]` URL.
 
         Credentials may be embedded in the URL (`mqtts://user:pass@host:port`)
         or passed explicitly via `username` / `password` (explicit wins —
         callers thread env-var credentials this way). Uses urlparse's
         hostname/port/username/password so a userinfo prefix doesn't break
-        the host:port split.
+        the host:port split. A missing port defaults to 8883 (TLS) / 1883.
         """
         parsed = urlparse(url)
         if parsed.scheme not in ("mqtt", "mqtts"):
             raise ValueError(f"Invalid MQTT URL: {url} (must start with mqtt:// or mqtts://)")
+        use_tls = parsed.scheme == "mqtts"
         return cls(
             parsed.hostname,
-            parsed.port,
+            parsed.port or (8883 if use_tls else 1883),
             is_edge,
-            use_tls=parsed.scheme == "mqtts",
+            use_tls=use_tls,
             username=username if username is not None else parsed.username,
             password=password if password is not None else parsed.password,
         )
