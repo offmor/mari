@@ -163,6 +163,14 @@ class MarilibEdge(MarilibBase):
         if self.tui:
             self.tui.close()
 
+    def close(self):
+        """Clean teardown: stop the metrics thread, close serial/mqtt/tui."""
+        if self.metrics_tester:
+            self.metrics_tester.stop()
+        self.serial_interface.close()
+        self.mqtt_interface.close()
+        self.close_tui()
+
     # ============================ MarilibEdge methods =========================
 
     @property

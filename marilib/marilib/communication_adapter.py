@@ -1,9 +1,9 @@
 import base64
 import time
-from urllib.parse import urlparse
-import paho.mqtt.client as mqtt
-
 from abc import ABC, abstractmethod
+from urllib.parse import urlparse
+
+import paho.mqtt.client as mqtt
 from rich import print
 
 from marilib.serial_hdlc import (
@@ -12,7 +12,7 @@ from marilib.serial_hdlc import (
     HDLCState,
     hdlc_encode,
 )
-from marilib.serial_uart import SerialInterface, SERIAL_DEFAULT_BAUDRATE
+from marilib.serial_uart import SERIAL_DEFAULT_BAUDRATE, SerialInterface
 
 
 class CommunicationAdapterBase(ABC):
@@ -77,10 +77,37 @@ class SerialAdapter(CommunicationAdapterBase):
             self.serial.write(encoded)
 
 
+def parse_mqtt_url(url: str):
+    """Parse a `mqtt(s)://[user:pass@]host[:port]` URL into its parts.
+
+    Returns `(host, port, use_tls, username, password)`. A missing port
+    defaults to 8883 (TLS) / 1883 (plain). `username`/`password` are
+    None when no userinfo is present. Raises ValueError on a bad scheme.
+
+    The single source of truth for the MQTT-URL → parts mapping, so the
+    `dotbot controller` / `dotbot swarm` CLIs (which can't import each
+    other) agree with `MQTTAdapter.from_url` on the parse + default port.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("mqtt", "mqtts"):
+        raise ValueError(f"Invalid MQTT URL: {url} (must start with mqtt:// or mqtts://)")
+    use_tls = parsed.scheme == "mqtts"
+    port = parsed.port or (8883 if use_tls else 1883)
+    return parsed.hostname, port, use_tls, parsed.username, parsed.password
+
+
 class MQTTAdapter(CommunicationAdapterBase):
     """Class used to interface with MQTT."""
 
-    def __init__(self, host, port, is_edge: bool, use_tls: bool = False):
+    def __init__(
+        self,
+        host,
+        port,
+        is_edge: bool,
+        use_tls: bool = False,
+        username: str | None = None,
+        password: str | None = None,
+    ):
         self.host = host
         self.port = port
         self.is_edge = is_edge
@@ -88,20 +115,35 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client = None
         self.on_data_received = None
         self.use_tls = use_tls
+        self.username = username
+        self.password = password
         # optimize qos for throughput
         # 0 = no delivery guarantee, 1 = at least once, 2 = exactly once
         self.qos = 0
 
     @classmethod
-    def from_url(cls, url: str, is_edge: bool):
-        url = urlparse(url)
-        host, port = url.netloc.split(":")
-        if url.scheme == "mqtt":
-            return cls(host, int(port), is_edge, use_tls=False)
-        elif url.scheme == "mqtts":
-            return cls(host, int(port), is_edge, use_tls=True)
-        else:
-            raise ValueError(f"Invalid MQTT URL: {url} (must start with mqtt:// or mqtts://)")
+    def from_url(
+        cls,
+        url: str,
+        is_edge: bool,
+        username: str | None = None,
+        password: str | None = None,
+    ):
+        """Build an MQTTAdapter from a `mqtt(s)://[user:pass@]host[:port]` URL.
+
+        Credentials may be embedded in the URL (`mqtts://user:pass@host:port`)
+        or passed explicitly via `username` / `password` (explicit wins —
+        callers thread env-var credentials this way).
+        """
+        host, port, use_tls, url_user, url_pass = parse_mqtt_url(url)
+        return cls(
+            host,
+            port,
+            is_edge,
+            use_tls=use_tls,
+            username=username if username is not None else url_user,
+            password=password if password is not None else url_pass,
+        )
 
     # ==== public methods ====
 
@@ -141,6 +183,8 @@ class MQTTAdapter(CommunicationAdapterBase):
             mqtt.CallbackAPIVersion.VERSION2,
             protocol=mqtt.MQTTProtocolVersion.MQTTv5,
         )
+        if self.username is not None:
+            self.client.username_pw_set(self.username, self.password)
         if self.use_tls:
             self.client.tls_set_context(context=None)
         self.client.on_log = self._on_log
@@ -151,6 +195,8 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client.loop_start()
 
     def close(self):
+        if self.client is None:
+            return
         self.client.disconnect()
         self.client.loop_stop()
 
