@@ -1,9 +1,9 @@
 import base64
 import time
-from urllib.parse import urlparse
-import paho.mqtt.client as mqtt
-
 from abc import ABC, abstractmethod
+from urllib.parse import urlparse
+
+import paho.mqtt.client as mqtt
 from rich import print
 
 from marilib.serial_hdlc import (
@@ -12,7 +12,7 @@ from marilib.serial_hdlc import (
     HDLCState,
     hdlc_encode,
 )
-from marilib.serial_uart import SerialInterface, SERIAL_DEFAULT_BAUDRATE
+from marilib.serial_uart import SERIAL_DEFAULT_BAUDRATE, SerialInterface
 
 
 class CommunicationAdapterBase(ABC):
@@ -80,7 +80,15 @@ class SerialAdapter(CommunicationAdapterBase):
 class MQTTAdapter(CommunicationAdapterBase):
     """Class used to interface with MQTT."""
 
-    def __init__(self, host, port, is_edge: bool, use_tls: bool = False):
+    def __init__(
+        self,
+        host,
+        port,
+        is_edge: bool,
+        use_tls: bool = False,
+        username: str = None,
+        password: str = None,
+    ):
         self.host = host
         self.port = port
         self.is_edge = is_edge
@@ -88,20 +96,33 @@ class MQTTAdapter(CommunicationAdapterBase):
         self.client = None
         self.on_data_received = None
         self.use_tls = use_tls
+        self.username = username
+        self.password = password
         # optimize qos for throughput
         # 0 = no delivery guarantee, 1 = at least once, 2 = exactly once
         self.qos = 0
 
     @classmethod
-    def from_url(cls, url: str, is_edge: bool):
-        url = urlparse(url)
-        host, port = url.netloc.split(":")
-        if url.scheme == "mqtt":
-            return cls(host, int(port), is_edge, use_tls=False)
-        elif url.scheme == "mqtts":
-            return cls(host, int(port), is_edge, use_tls=True)
-        else:
+    def from_url(cls, url: str, is_edge: bool, username: str = None, password: str = None):
+        """Build an MQTTAdapter from a `mqtt(s)://[user:pass@]host:port` URL.
+
+        Credentials may be embedded in the URL (`mqtts://user:pass@host:port`)
+        or passed explicitly via `username` / `password` (explicit wins —
+        callers thread env-var credentials this way). Uses urlparse's
+        hostname/port/username/password so a userinfo prefix doesn't break
+        the host:port split.
+        """
+        parsed = urlparse(url)
+        if parsed.scheme not in ("mqtt", "mqtts"):
             raise ValueError(f"Invalid MQTT URL: {url} (must start with mqtt:// or mqtts://)")
+        return cls(
+            parsed.hostname,
+            parsed.port,
+            is_edge,
+            use_tls=parsed.scheme == "mqtts",
+            username=username if username is not None else parsed.username,
+            password=password if password is not None else parsed.password,
+        )
 
     # ==== public methods ====
 
@@ -141,6 +162,8 @@ class MQTTAdapter(CommunicationAdapterBase):
             mqtt.CallbackAPIVersion.VERSION2,
             protocol=mqtt.MQTTProtocolVersion.MQTTv5,
         )
+        if self.username is not None:
+            self.client.username_pw_set(self.username, self.password)
         if self.use_tls:
             self.client.tls_set_context(context=None)
         self.client.on_log = self._on_log
