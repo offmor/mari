@@ -1,6 +1,27 @@
 """Tests for MQTTAdapter URL parsing and credential handling."""
 
-from marilib.communication_adapter import MQTTAdapter
+from marilib.communication_adapter import MQTTAdapter, parse_mqtt_url
+
+
+def test_parse_mqtt_url_parts():
+    assert parse_mqtt_url("mqtts://argus:8883") == ("argus", 8883, True, None, None)
+    assert parse_mqtt_url("mqtt://localhost:1883") == (
+        "localhost",
+        1883,
+        False,
+        None,
+        None,
+    )
+
+
+def test_parse_mqtt_url_defaults_port():
+    assert parse_mqtt_url("mqtts://argus")[1] == 8883
+    assert parse_mqtt_url("mqtt://argus")[1] == 1883
+
+
+def test_parse_mqtt_url_credentials():
+    host, port, use_tls, user, pw = parse_mqtt_url("mqtts://alice:s3cret@argus:8883")
+    assert (host, port, use_tls, user, pw) == ("argus", 8883, True, "alice", "s3cret")
 
 
 def test_from_url_plain():
