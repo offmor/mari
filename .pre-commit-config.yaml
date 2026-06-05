@@ -1,19 +1,39 @@
 repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+
   - repo: local
     hooks:
       - id: clang-format-check
         name: Check formatting with clang-format (dry-run)
         # note: has to use clang version 15
-        entry: bash -c 'find app drv mari \( -name "*.c" -o -name "*.h" \) -exec clang-format --dry-run --Werror {} +'
+        entry: bash -c 'find firmware/app firmware/drv firmware/mari \( -name "*.c" -o -name "*.h" \) -exec clang-format --dry-run --Werror {} +'
         language: system
         pass_filenames: false
       - id: gateway-network-id-check
         name: "Ensure gateway uses MARI_NET_ID_DEFAULT "
-        entry: grep MARI_NET_ID_DEFAULT app/03app_gateway_net/main.c
+        entry: grep MARI_NET_ID_DEFAULT firmware/app/03app_gateway_net/main.c
         language: system
         pass_filenames: false
       - id: node-network-id-check
         name: "Ensure node uses MARI_NET_ID_DEFAULT "
-        entry: grep MARI_NET_ID_DEFAULT app/03app_node/main.c
+        entry: grep MARI_NET_ID_DEFAULT firmware/app/03app_node/main.c
         language: system
         pass_filenames: false
+      - id: hatch-fmt
+        name: hatch fmt
+        entry: hatch fmt
+        language: system
+        types: [python]
+        pass_filenames: false
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: ["--profile", "black", "--line-length", "79"]

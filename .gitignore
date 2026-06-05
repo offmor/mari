@@ -67,3 +67,22 @@ Output/
 
 # artifacts
 artifacts/
+
+# Python
+*.pyc
+__pycache__/
+build/
+dist/
+.coverage
+coverage.*
+.tox/
+.venv/
+.venv*
+venv
+
+# Marilib runtime logs
+logs/
+logs_metrics/
+
+# macOS
+.DS_Store
