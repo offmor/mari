@@ -168,7 +168,7 @@ class MetricsLogger:
         ]
         self._gateway_writer.writerow(row)
 
-    def _safe_pct(self, value: float | None) -> float:
+    def _safe_fraction(self, value: float | None) -> float:
         """Normalizes invalid PDR values to a stable 0..1 range for CSV export."""
         if value is None:
             return 0.0
@@ -198,10 +198,10 @@ class MetricsLogger:
                 f"{node.stats.success_rate():.2%}",
                 f"{node.pdr_downlink:.2%}",
                 f"{node.pdr_uplink:.2%}",
-                f"{self._safe_pct(node.stats_pdr_downlink_radio()):.2%}",
-                f"{self._safe_pct(node.stats_pdr_uplink_radio()):.2%}",
-                f"{self._safe_pct(node.stats_pdr_downlink_uart()):.2%}",
-                f"{self._safe_pct(node.stats_pdr_uplink_uart()):.2%}",
+                f"{self._safe_fraction(node.stats_pdr_downlink_radio()):.2%}",
+                f"{self._safe_fraction(node.stats_pdr_uplink_radio()):.2%}",
+                f"{self._safe_fraction(node.stats_pdr_downlink_uart()):.2%}",
+                f"{self._safe_fraction(node.stats_pdr_uplink_uart()):.2%}",
                 node.stats_rssi_node_dbm(),
                 node.stats_rssi_gw_dbm(),
                 f"{node.stats_avg_latency_roundtrip_node_edge_ms():.2f}",
